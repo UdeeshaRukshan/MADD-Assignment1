@@ -2,26 +2,22 @@
 //  Assignment1App.swift
 //  Assignment1
 //
-//  Created by udeesha rukshan on 2025-03-03.
+//  Created by Udeesha Rukshan on 2025-04-02.
 //
 
 import SwiftUI
 
 @main
 struct Assignment1App: App {
-    @State private var showSplashScreen = true
-    
     var body: some Scene {
         WindowGroup {
-            if showSplashScreen {
-                InitialScreen(navigateToContent: $showSplashScreen)
-            } else {
-                MainTabView()
-            }
+            // Initialize the MainTabView without passing arguments
+            MainTabView()
         }
     }
 }
 
 #Preview {
+    // For the preview, we also don't pass any arguments
     MainTabView()
 }

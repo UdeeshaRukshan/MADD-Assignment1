@@ -7,7 +7,7 @@
 
 import SwiftUI
 
-@main
+// Removed @main attribute
 struct CrimeMapApp: App {
     var body: some Scene {
         WindowGroup {
