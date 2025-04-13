@@ -54,7 +54,7 @@ struct MainTabView: View {
                     
                     SOSButton(isActivated: $sosActivated)
                         .padding(.trailing, 20)
-                        .padding(.bottom, 90) // Position above tab bar
+                        .padding(.bottom, 120) // Position above tab bar
                 }
             }
             .ignoresSafeArea(.keyboard)

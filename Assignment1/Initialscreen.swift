@@ -108,7 +108,7 @@ struct InitialScreen: View {
                 }
             }
             .navigationDestination(isPresented: $navigateToContent) {
-                ContentView() // Navigate to ContentView automatically
+                MainTabView() // Navigate to ContentView automatically
             }
         }
     }
