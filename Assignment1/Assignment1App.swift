@@ -7,11 +7,21 @@
 
 import SwiftUI
 
-
+@main
 struct Assignment1App: App {
+    @State private var showSplashScreen = true
+    
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            if showSplashScreen {
+                InitialScreen(navigateToContent: $showSplashScreen)
+            } else {
+                MainTabView()
+            }
         }
     }
+}
+
+#Preview {
+    MainTabView()
 }
