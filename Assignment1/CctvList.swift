@@ -129,6 +129,8 @@ struct CameraCell: View {
 struct CameraPreviewView: View {
     let camera: CCTVCamera
     @Environment(\.dismiss) private var dismiss
+    // YouTube video ID from the URL you provided
+    let videoID = "ms-Q3t5IqNM"
     
     var body: some View {
         VStack(spacing: 20) {
@@ -151,25 +153,31 @@ struct CameraPreviewView: View {
             }
             .padding()
             
-            // Camera feed (simulated)
+            // Camera feed (now with YouTube video)
             ZStack {
                 if camera.isOnline {
-                    // Simulated camera feed
-                    Rectangle()
-                        .fill(Color.black)
+                    // YouTube video feed
+                    YouTubePlayerView(videoID: videoID)
                         .overlay(
-                            // This would be your actual camera feed
-                            // For now, we'll use a placeholder
                             VStack {
-                                Image(systemName: "video.fill")
-                                    .resizable()
-                                    .aspectRatio(contentMode: .fit)
-                                    .frame(width: 60, height: 60)
-                                    .foregroundColor(.white.opacity(0.5))
-                                
-                                Text("Live Feed")
-                                    .foregroundColor(.white.opacity(0.7))
-                                    .padding(.top, 10)
+                                Spacer()
+                                HStack {
+                                    Text("LIVE")
+                                        .foregroundColor(.white)
+                                        .font(.caption)
+                                        .padding(.horizontal, 8)
+                                        .padding(.vertical, 4)
+                                        .background(Color.red)
+                                        .cornerRadius(4)
+                                    
+                                    Spacer()
+                                    
+                                    Text("Security Feed • Indoor")
+                                        .foregroundColor(.white)
+                                        .font(.caption)
+                                }
+                                .padding(8)
+                                .background(Color.black.opacity(0.5))
                             }
                         )
                 } else {
