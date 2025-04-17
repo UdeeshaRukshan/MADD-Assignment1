@@ -61,25 +61,7 @@ enum CrimeCategory: String, CaseIterable {
     case fraud = "Fraud"
     case other = "Other"
     
-    var color: Color {
-        switch self {
-        case .theft: return .blue
-        case .assault: return .red
-        case .vandalism: return .purple
-        case .drugRelated: return .green
-        case .fraud: return .orange
-        case .other: return .gray
-        }
-    }
     
-    var icon: String {
-        switch self {
-        case .theft: return "bag.fill"
-        case .assault: return "person.fill.xmark"
-        case .vandalism: return "hammer.fill"
-        case .drugRelated: return "pills.fill"
-        case .fraud: return "creditcard.fill"
-        case .other: return "questionmark.circle.fill"
-        }
-    }
+    
+    
 }

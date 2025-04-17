@@ -45,7 +45,7 @@ struct PlaceholderView: View {
                         
                         Spacer()
                         
-                        Button(action: {}) {
+                        NavigationLink(destination: NotificationContentView(viewModel: viewModel)) {
                             Image(systemName: "bell.fill")
                                 .font(.system(size: 20))
                                 .foregroundColor(.white)
@@ -57,6 +57,17 @@ struct PlaceholderView: View {
                                 .overlay(
                                     Circle()
                                         .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                )
+                                // Add notification badge if there are active notifications
+                                .overlay(
+                                    Group {
+                                        if viewModel.notificationMessage != nil {
+                                            Circle()
+                                                .fill(Color.red)
+                                                .frame(width: 12, height: 12)
+                                                .offset(x: 10, y: -10)
+                                        }
+                                    }
                                 )
                         }
                     }
