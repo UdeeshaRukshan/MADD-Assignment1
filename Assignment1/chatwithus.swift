@@ -1,9 +1,8 @@
 import SwiftUI
 
 // MARK: - Models
-// MARK: - Models
 struct ChatUser: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let name: String
     let avatar: String // System image name
     let isVerified: Bool
@@ -12,10 +11,6 @@ struct ChatUser: Identifiable, Hashable {
     // Conforming to Hashable
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-        hasher.combine(name)
-        hasher.combine(avatar)
-        hasher.combine(isVerified)
-        hasher.combine(isOnline)
     }
     
     static func ==(lhs: ChatUser, rhs: ChatUser) -> Bool {
@@ -24,21 +19,16 @@ struct ChatUser: Identifiable, Hashable {
 }
 
 struct ChatMessage: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let content: String
     let timestamp: Date
     let sender: ChatUser
     let isAlert: Bool
-    var isRead: Bool = false
+    var isRead: Bool
     
     // Conforming to Hashable
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-        hasher.combine(content)
-        hasher.combine(timestamp)
-        hasher.combine(sender)
-        hasher.combine(isAlert)
-        hasher.combine(isRead)
     }
     
     static func ==(lhs: ChatMessage, rhs: ChatMessage) -> Bool {
@@ -47,7 +37,7 @@ struct ChatMessage: Identifiable, Hashable {
 }
 
 struct ChatConversation: Identifiable, Hashable {
-    let id = UUID()
+    let id: String
     let participants: [ChatUser]
     var messages: [ChatMessage]
     let isPublic: Bool
@@ -64,10 +54,6 @@ struct ChatConversation: Identifiable, Hashable {
     // Conforming to Hashable
     func hash(into hasher: inout Hasher) {
         hasher.combine(id)
-        hasher.combine(title)
-        hasher.combine(isPublic)
-        hasher.combine(participants)
-        hasher.combine(messages)
     }
     
     static func ==(lhs: ChatConversation, rhs: ChatConversation) -> Bool {
@@ -75,56 +61,24 @@ struct ChatConversation: Identifiable, Hashable {
     }
 }
 
-
-
-
 // MARK: - Chat List View
 struct ChatListView: View {
-    // Current user
+    @StateObject private var chatService = FirebaseChatService()
+    @State private var showingPublicChats = true
+    @State private var searchText = ""
+    @State private var showingNewChatSheet = false
+    
+    // Current user - In a real app, this would come from your auth system
     let currentUser = ChatUser(
+        id: "current_user_id",
         name: "You",
         avatar: "person.crop.circle.fill",
         isVerified: true,
         isOnline: true
     )
     
-    // Sample users
-    let officer1 = ChatUser(
-        name: "Officer Johnson",
-        avatar: "person.crop.circle.badge.checkmark.fill",
-        isVerified: true,
-        isOnline: true
-    )
-    
-    let officer2 = ChatUser(
-        name: "Officer Martinez",
-        avatar: "person.crop.circle.badge.checkmark.fill",
-        isVerified: true,
-        isOnline: false
-    )
-    
-    let neighbor1 = ChatUser(
-        name: "Sarah Thompson",
-        avatar: "person.crop.circle.fill",
-        isVerified: false,
-        isOnline: true
-    )
-    
-    let neighbor2 = ChatUser(
-        name: "Mike Chen",
-        avatar: "person.crop.circle.fill",
-        isVerified: false,
-        isOnline: false
-    )
-    
-    // State variables
-    @State private var showingPublicChats = true
-    @State private var selectedConversation: ChatConversation?
-    @State private var searchText = ""
-    @State private var conversations: [ChatConversation] = []
-    
     var filteredConversations: [ChatConversation] {
-        let filtered = conversations.filter { $0.isPublic == showingPublicChats }
+        let filtered = chatService.conversations.filter { $0.isPublic == showingPublicChats }
         
         if searchText.isEmpty {
             return filtered
@@ -161,135 +115,86 @@ struct ChatListView: View {
                 .padding(.bottom)
                 
                 // Chat list
-                List {
-                    ForEach(filteredConversations) { conversation in
-                        NavigationLink(value: conversation) {
-                            ChatRowView(conversation: conversation)
+                if chatService.isLoading {
+                    ProgressView("Loading conversations...")
+                        .padding()
+                } else if let errorMessage = chatService.errorMessage {
+                    VStack {
+                        Text("Error: \(errorMessage)")
+                            .foregroundColor(.red)
+                            .padding()
+                        
+                        Button("Retry") {
+                            chatService.loadConversations(for: currentUser.id)
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                } else if filteredConversations.isEmpty {
+                    VStack(spacing: 20) {
+                        Image(systemName: showingPublicChats ? "person.3.fill" : "message.fill")
+                            .font(.system(size: 60))
+                            .foregroundColor(.gray.opacity(0.6))
+                            .padding(.top, 80)
+                        
+                        Text(showingPublicChats ? "No Public Channels" : "No Private Messages")
+                            .font(.title3)
+                            .fontWeight(.semibold)
+                        
+                        Text(showingPublicChats ? 
+                             "Join a public channel or create one" : 
+                             "Start a conversation with someone")
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal, 40)
+                        
+                        Button(action: {
+                            showingNewChatSheet = true
+                        }) {
+                            Label(showingPublicChats ? "Create Channel" : "Start Conversation", 
+                                 systemImage: "plus.circle.fill")
+                                .padding(.horizontal, 20)
+                                .padding(.vertical, 10)
+                                .background(Color.blue.opacity(0.1))
+                                .foregroundColor(.blue)
+                                .cornerRadius(20)
+                        }
+                        .padding(.top, 10)
+                    }
+                } else {
+                    List {
+                        ForEach(filteredConversations) { conversation in
+                            NavigationLink(value: conversation) {
+                                ChatRowView(conversation: conversation)
+                            }
                         }
                     }
+                    .listStyle(.plain)
+                    .refreshable {
+                        chatService.loadConversations(for: currentUser.id)
+                    }
                 }
-                .listStyle(.plain)
             }
             .navigationTitle("Chats")
             .navigationDestination(for: ChatConversation.self) { conversation in
-                ChatDetailView(conversation: conversation, currentUser: currentUser)
+                let viewModel = ConversationViewModel(conversation: conversation, chatService: chatService)
+                ChatDetailView(conversationViewModel: viewModel, currentUser: currentUser, chatService: chatService)
             }
             .toolbar {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
-                        // Action to create new chat
+                        showingNewChatSheet = true
                     }) {
                         Image(systemName: "square.and.pencil")
                     }
                 }
             }
+            .sheet(isPresented: $showingNewChatSheet) {
+                NewChatView(chatService: chatService, currentUser: currentUser, isPublic: showingPublicChats)
+            }
             .onAppear {
-                // Initialize sample conversations if empty
-                if conversations.isEmpty {
-                    initializeConversations()
-                }
+                chatService.loadConversations(for: currentUser.id)
             }
         }
-    }
-    
-    // Initialize sample conversations
-    private func initializeConversations() {
-        // Sample conversations
-        let publicAlerts = ChatConversation(
-            participants: [officer1, officer2, neighbor1, neighbor2],
-            messages: [
-                ChatMessage(
-                    content: "ALERT: Suspicious activity reported near Oak Street and 5th Avenue. Please stay vigilant.",
-                    timestamp: Date().addingTimeInterval(-3600),
-                    sender: officer1,
-                    isAlert: true
-                ),
-                ChatMessage(
-                    content: "I saw someone checking car doors in that area around 9pm.",
-                    timestamp: Date().addingTimeInterval(-3400),
-                    sender: neighbor1,
-                    isAlert: false
-                ),
-                ChatMessage(
-                    content: "We've dispatched a patrol car to investigate. Thank you for the report.",
-                    timestamp: Date().addingTimeInterval(-3200),
-                    sender: officer1,
-                    isAlert: false
-                )
-            ],
-            isPublic: true,
-            title: "Neighborhood Alerts"
-        )
-        
-        let communityChat = ChatConversation(
-            participants: [officer1, neighbor1, neighbor2],
-            messages: [
-                ChatMessage(
-                    content: "The community watch meeting is scheduled for this Friday at 7pm in the community center.",
-                    timestamp: Date().addingTimeInterval(-86400),
-                    sender: officer1,
-                    isAlert: false
-                ),
-                ChatMessage(
-                    content: "Will there be any training on how to report suspicious activities?",
-                    timestamp: Date().addingTimeInterval(-80000),
-                    sender: neighbor2,
-                    isAlert: false
-                ),
-                ChatMessage(
-                    content: "Yes, we'll cover the reporting process and what details are most helpful for investigations.",
-                    timestamp: Date().addingTimeInterval(-79000),
-                    sender: officer1,
-                    isAlert: false
-                )
-            ],
-            isPublic: true,
-            title: "Community Discussion"
-        )
-        
-        let privateChat1 = ChatConversation(
-            participants: [officer1],
-            messages: [
-                ChatMessage(
-                    content: "I'd like to report a recurring issue with teenagers gathering in the park after hours.",
-                    timestamp: Date().addingTimeInterval(-7200),
-                    sender: currentUser,
-                    isAlert: false
-                ),
-                ChatMessage(
-                    content: "Thank you for letting us know. What time do they usually gather?",
-                    timestamp: Date().addingTimeInterval(-7100),
-                    sender: officer1,
-                    isAlert: false,
-                    isRead: false
-                )
-            ],
-            isPublic: false,
-            title: "Officer Johnson"
-        )
-        
-        let privateChat2 = ChatConversation(
-            participants: [neighbor1],
-            messages: [
-                ChatMessage(
-                    content: "Hi Sarah, did you also get the alert about the suspicious activity?",
-                    timestamp: Date().addingTimeInterval(-43200),
-                    sender: currentUser,
-                    isAlert: false
-                ),
-                ChatMessage(
-                    content: "Yes, I've been keeping my porch light on and making sure all doors are locked.",
-                    timestamp: Date().addingTimeInterval(-42000),
-                    sender: neighbor1,
-                    isAlert: false,
-                    isRead: true
-                )
-            ],
-            isPublic: false,
-            title: "Sarah Thompson"
-        )
-        
-        conversations = [publicAlerts, communityChat, privateChat1, privateChat2]
     }
 }
 
@@ -388,8 +293,9 @@ struct ChatRowView: View {
 
 // MARK: - Chat Detail View
 struct ChatDetailView: View {
-    @State var conversation: ChatConversation
+    @ObservedObject var conversationViewModel: ConversationViewModel
     let currentUser: ChatUser
+    @ObservedObject var chatService: FirebaseChatService
     @State private var messageText = ""
     @State private var isShowingAttachmentOptions = false
     @Environment(\.dismiss) private var dismiss
@@ -399,12 +305,14 @@ struct ChatDetailView: View {
             // Chat messages
             ScrollView {
                 LazyVStack(spacing: 12) {
-                    ForEach(conversation.messages.sorted(by: { $0.timestamp < $1.timestamp })) { message in
-                        MessageBubble(message: message, isFromCurrentUser: message.sender.name == currentUser.name)
+                    ForEach(conversationViewModel.conversation.messages.sorted(by: { $0.timestamp < $1.timestamp })) { message in
+                        MessageBubble(message: message, isFromCurrentUser: message.sender.id == currentUser.id)
                     }
                 }
                 .padding()
             }
+            .scrollDismissesKeyboard(.immediately)
+            .scrollIndicators(.hidden)
             
             // Message input
             VStack(spacing: 0) {
@@ -437,7 +345,9 @@ struct ChatDetailView: View {
                     HStack(spacing: 20) {
                         AttachmentButton(icon: "camera.fill", label: "Photo")
                         AttachmentButton(icon: "location.fill", label: "Location")
-                        AttachmentButton(icon: "exclamationmark.triangle.fill", label: "Alert")
+                        AttachmentButton(icon: "exclamationmark.triangle.fill", label: "Alert", action: {
+                            sendAlertMessage()
+                        })
                         AttachmentButton(icon: "doc.fill", label: "Document")
                     }
                     .padding(.horizontal)
@@ -447,10 +357,10 @@ struct ChatDetailView: View {
             }
             .background(Color(.systemBackground))
         }
-        .navigationTitle(conversation.title)
+        .navigationTitle(conversationViewModel.conversation.title)
         .navigationBarTitleDisplayMode(.inline)
         .toolbar {
-            if !conversation.isPublic {
+            if !conversationViewModel.conversation.isPublic {
                 ToolbarItem(placement: .navigationBarTrailing) {
                     Button(action: {
                         // Call action
@@ -461,9 +371,18 @@ struct ChatDetailView: View {
             }
         }
         .onAppear {
+            print("ChatDetailView appeared with \(conversationViewModel.conversation.messages.count) messages")
+            conversationViewModel.conversation.messages.forEach { message in
+                print("Message: \(message.content) from \(message.sender.name)")
+            }
+            
             // Mark messages as read
-            for i in 0..<conversation.messages.count {
-                conversation.messages[i].isRead = true
+            let unreadMessageIds = conversationViewModel.conversation.messages
+                .filter { !$0.isRead && $0.sender.id != currentUser.id }
+                .map { $0.id }
+            
+            if !unreadMessageIds.isEmpty {
+                chatService.markMessagesAsRead(conversationId: conversationViewModel.conversation.id, messageIds: unreadMessageIds)
             }
         }
     }
@@ -471,15 +390,180 @@ struct ChatDetailView: View {
     private func sendMessage() {
         guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
         
-        let newMessage = ChatMessage(
+        conversationViewModel.addMessage(
             content: messageText,
-            timestamp: Date(),
-            sender: currentUser,
+            senderId: currentUser.id,
             isAlert: false
         )
         
-        conversation.messages.append(newMessage)
         messageText = ""
+    }
+    
+    private func sendAlertMessage() {
+        guard !messageText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty else { return }
+        
+        conversationViewModel.addMessage(
+            content: messageText,
+            senderId: currentUser.id,
+            isAlert: true
+        )
+        
+        messageText = ""
+        isShowingAttachmentOptions = false
+    }
+}
+
+// MARK: - Conversation ViewModel
+class ConversationViewModel: ObservableObject {
+    @Published var conversation: ChatConversation
+    private let chatService: FirebaseChatService
+    
+    init(conversation: ChatConversation, chatService: FirebaseChatService) {
+        self.conversation = conversation
+        self.chatService = chatService
+    }
+    
+    func addMessage(content: String, senderId: String, isAlert: Bool) {
+        chatService.sendMessage(
+            conversationId: conversation.id,
+            content: content,
+            senderId: senderId,
+            isAlert: isAlert
+        )
+    }
+}
+
+// MARK: - New Chat View
+struct NewChatView: View {
+    @ObservedObject var chatService: FirebaseChatService
+    let currentUser: ChatUser
+    let isPublic: Bool
+    
+    @State private var title = ""
+    @State private var selectedUsers: [ChatUser] = []
+    @State private var isLoading = false
+    @Environment(\.dismiss) private var dismiss
+    
+    // In a real app, you'd fetch this from Firebase
+    let availableUsers: [ChatUser] = [
+        ChatUser(
+            id: "officer1",
+            name: "Officer Johnson",
+            avatar: "person.crop.circle.badge.checkmark.fill",
+            isVerified: true,
+            isOnline: true
+        ),
+        ChatUser(
+            id: "officer2",
+            name: "Officer Martinez",
+            avatar: "person.crop.circle.badge.checkmark.fill",
+            isVerified: true,
+            isOnline: false
+        ),
+        ChatUser(
+            id: "neighbor1",
+            name: "Sarah Thompson",
+            avatar: "person.crop.circle.fill",
+            isVerified: false,
+            isOnline: true
+        ),
+        ChatUser(
+            id: "neighbor2",
+            name: "Mike Chen",
+            avatar: "person.crop.circle.fill",
+            isVerified: false,
+            isOnline: false
+        )
+    ]
+    
+    var body: some View {
+        NavigationView {
+            Form {
+                Section(header: Text("Title")) {
+                    TextField("Conversation title", text: $title)
+                }
+                
+                if !isPublic {
+                    Section(header: Text("Select Users")) {
+                        ForEach(availableUsers) { user in
+                            Button(action: {
+                                toggleUserSelection(user)
+                            }) {
+                                HStack {
+                                    Image(systemName: user.avatar)
+                                        .foregroundColor(.blue)
+                                    
+                                    Text(user.name)
+                                    
+                                    Spacer()
+                                    
+                                    if selectedUsers.contains(where: { $0.id == user.id }) {
+                                        Image(systemName: "checkmark")
+                                            .foregroundColor(.blue)
+                                    }
+                                }
+                            }
+                            .foregroundColor(.primary)
+                        }
+                    }
+                }
+                
+                Section {
+                    Button(action: createConversation) {
+                        if isLoading {
+                            ProgressView()
+                                .progressViewStyle(CircularProgressViewStyle())
+                        } else {
+                            Text(isPublic ? "Create Public Channel" : "Start Conversation")
+                                .foregroundColor(.blue)
+                        }
+                    }
+                    .disabled(isLoading || title.isEmpty || (!isPublic && selectedUsers.isEmpty))
+                }
+            }
+            .navigationTitle(isPublic ? "New Public Channel" : "New Conversation")
+            .toolbar {
+                ToolbarItem(placement: .navigationBarLeading) {
+                    Button("Cancel") {
+                        dismiss()
+                    }
+                }
+            }
+        }
+    }
+    
+    private func toggleUserSelection(_ user: ChatUser) {
+        if let index = selectedUsers.firstIndex(where: { $0.id == user.id }) {
+            selectedUsers.remove(at: index)
+        } else {
+            selectedUsers.append(user)
+        }
+    }
+    
+    private func createConversation() {
+        isLoading = true
+        
+        // In a public chat, we might want to include all users automatically
+        var participantIds = selectedUsers.map { $0.id }
+        
+        // Always include the current user
+        if !participantIds.contains(currentUser.id) {
+            participantIds.append(currentUser.id)
+        }
+        
+        chatService.createConversation(
+            title: title,
+            participantIds: participantIds,
+            isPublic: isPublic
+        ) { conversationId in
+            isLoading = false
+            
+            if conversationId != nil {
+                dismiss()
+            } else {
+                // Handle error - in a real app, show an alert
+            }
+        }
     }
 }
 
@@ -553,19 +637,24 @@ struct MessageBubble: View {
 struct AttachmentButton: View {
     let icon: String
     let label: String
+    var action: (() -> Void)? = nil
     
     var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .font(.system(size: 20))
-                .foregroundColor(.white)
-                .frame(width: 50, height: 50)
-                .background(Color.blue)
-                .clipShape(Circle())
-            
-            Text(label)
-                .font(.caption)
-                .foregroundColor(.primary)
+        Button(action: {
+            action?()
+        }) {
+            VStack(spacing: 8) {
+                Image(systemName: icon)
+                    .font(.system(size: 20))
+                    .foregroundColor(.white)
+                    .frame(width: 50, height: 50)
+                    .background(Color.blue)
+                    .clipShape(Circle())
+                
+                Text(label)
+                    .font(.caption)
+                    .foregroundColor(.primary)
+            }
         }
     }
 }
