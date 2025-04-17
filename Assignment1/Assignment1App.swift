@@ -6,18 +6,26 @@
 //
 
 import SwiftUI
+import Firebase
 
 @main
 struct Assignment1App: App {
+    // Register app delegate for Firebase setup
+    @UIApplicationDelegateAdaptor(AppDelegate.self) var delegate
+    
+    // Create a shared instance of CrimeViewModel
+    @StateObject private var crimeViewModel = CrimeViewModel()
+    
     var body: some Scene {
         WindowGroup {
-            // Initialize the MainTabView without passing arguments
-            MainTabView()
+            InitialScreen()
+                .environmentObject(crimeViewModel) // Inject CrimeViewModel into the environment
         }
     }
 }
 
+
 #Preview {
-    // For the preview, we also don't pass any arguments
-    MainTabView()
+    InitialScreen()
+        .environmentObject(CrimeViewModel()) // Ensure previews also inject the environment object
 }

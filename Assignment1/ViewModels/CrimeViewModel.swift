@@ -8,7 +8,9 @@
 import Foundation
 import CoreLocation
 import MapKit
-import SwiftUI // Add this import to use withAnimation
+import SwiftUI
+import Firebase
+import FirebaseFirestore
 
 class CrimeViewModel: ObservableObject {
     @Published var criminalActivities: [CriminalActivity] = []
@@ -18,10 +20,116 @@ class CrimeViewModel: ObservableObject {
         center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
         span: MKCoordinateSpan(latitudeDelta: 0.1, longitudeDelta: 0.1)
     )
-    @Published var notificationMessage: String? // For notifications
+    @Published var notificationMessage: String?
+    
+    private var db = Firestore.firestore()
     
     init() {
-        loadSampleData()
+        fetchCrimes()
+    }
+    
+    func fetchCrimes() {
+        db.collection("crimes").addSnapshotListener { [weak self] snapshot, error in
+            guard let self = self, let documents = snapshot?.documents else {
+                print("Error fetching crimes: \(error?.localizedDescription ?? "Unknown error")")
+                return
+            }
+            
+            // Convert Firebase documents to CriminalActivity objects
+            self.criminalActivities = documents.compactMap { document -> CriminalActivity? in
+                let data = document.data()
+                
+                guard let title = data["title"] as? String,
+                      let description = data["description"] as? String,
+                      let categoryRaw = data["category"] as? String,
+                      let category = CrimeCategory(rawValue: categoryRaw),
+                      let dateTimestamp = data["date"] as? Timestamp,
+                      let severity = data["severity"] as? Int,
+                      let isPriority = data["isPriority"] as? Bool,
+                      let locationsData = data["locations"] as? [[String: Any]] else {
+                    return nil
+                }
+                
+                // Convert timestamp to Date
+                let date = dateTimestamp.dateValue()
+                
+                // Convert locations data
+                let locations = locationsData.compactMap { locationData -> CrimeLocation? in
+                    guard let title = locationData["title"] as? String,
+                          let description = locationData["description"] as? String,
+                          let latitude = locationData["latitude"] as? Double,
+                          let longitude = locationData["longitude"] as? Double,
+                          let address = locationData["address"] as? String,
+                          let timestampData = locationData["timestamp"] as? Timestamp,
+                          let evidencePhotos = locationData["evidencePhotos"] as? [String],
+                          let witnesses = locationData["witnesses"] as? Int,
+                          let isSolved = locationData["isSolved"] as? Bool else {
+                        return nil
+                    }
+                    
+                    return CrimeLocation(
+                        title: title,
+                        description: description,
+                        coordinate: CLLocationCoordinate2D(latitude: latitude, longitude: longitude),
+                        address: address,
+                        timestamp: timestampData.dateValue(),
+                        evidencePhotos: evidencePhotos,
+                        witnesses: witnesses,
+                        isSolved: isSolved
+                    )
+                }
+                
+                return CriminalActivity(
+                    title: title,
+                    description: description,
+                    category: category,
+                    date: date,
+                    locations: locations,
+                    severity: severity,
+                    isPriority: isPriority
+                )
+            }
+        }
+    }
+    
+    func addCrime(_ crime: CriminalActivity) {
+        // Convert CriminalActivity to Firebase document
+        var crimeData: [String: Any] = [
+            "title": crime.title,
+            "description": crime.description,
+            "category": crime.category.rawValue,
+            "date": Timestamp(date: crime.date),
+            "severity": crime.severity,
+            "isPriority": crime.isPriority
+        ]
+        
+        // Convert locations to dictionaries
+        let locationsData = crime.locations.map { location -> [String: Any] in
+            return [
+                "title": location.title,
+                "description": location.description,
+                "latitude": location.coordinate.latitude,
+                "longitude": location.coordinate.longitude,
+                "address": location.address,
+                "timestamp": Timestamp(date: location.timestamp),
+                "evidencePhotos": location.evidencePhotos,
+                "witnesses": location.witnesses,
+                "isSolved": location.isSolved
+            ]
+        }
+        
+        crimeData["locations"] = locationsData
+        
+        // Add to Firestore
+        db.collection("crimes").addDocument(data: crimeData) { [weak self] error in
+            if let error = error {
+                print("Error adding crime: \(error.localizedDescription)")
+                return
+            }
+            
+            // No need to manually append to array since we're using a snapshot listener
+            self?.triggerNotification(for: crime)
+        }
     }
     
     func selectActivity(_ activity: CriminalActivity) {
@@ -44,7 +152,7 @@ class CrimeViewModel: ObservableObject {
             let latDelta = (maxLat - minLat) * 1.5
             let longDelta = (maxLong - minLong) * 1.5
             
-            withAnimation { // Now this will work
+            withAnimation {
                 region = MKCoordinateRegion(
                     center: center,
                     span: MKCoordinateSpan(
@@ -61,11 +169,6 @@ class CrimeViewModel: ObservableObject {
         selectedLocation = nil
     }
     
-    func addCrime(_ crime: CriminalActivity) {
-        criminalActivities.append(crime)
-        triggerNotification(for: crime)
-    }
-    
     private func triggerNotification(for crime: CriminalActivity) {
         notificationMessage = "New Crime Reported: \(crime.title)"
         
@@ -73,51 +176,5 @@ class CrimeViewModel: ObservableObject {
         DispatchQueue.main.asyncAfter(deadline: .now() + 5) {
             self.notificationMessage = nil
         }
-    }
-    
-    // MARK: - Sample Data
-    private func loadSampleData() {
-        criminalActivities = [
-            CriminalActivity(
-                title: "Robbery",
-                description: "A robbery occurred at a local store.",
-                category: .theft,
-                date: Date(),
-                locations: [
-                    CrimeLocation(
-                        title: "Store",
-                        description: "The robbery happened here.",
-                        coordinate: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
-                        address: "123 Main St, San Francisco, CA",
-                        timestamp: Date(),
-                        evidencePhotos: [],
-                        witnesses: 2,
-                        isSolved: false
-                    )
-                ],
-                severity: 4,
-                isPriority: true
-            ),
-            CriminalActivity(
-                title: "Vandalism",
-                description: "Graffiti on public property.",
-                category: .vandalism,
-                date: Date(),
-                locations: [
-                    CrimeLocation(
-                        title: "Park",
-                        description: "Graffiti was found here.",
-                        coordinate: CLLocationCoordinate2D(latitude: 37.7849, longitude: -122.4094),
-                        address: "456 Park Ave, San Francisco, CA",
-                        timestamp: Date(),
-                        evidencePhotos: [],
-                        witnesses: 0,
-                        isSolved: false
-                    )
-                ],
-                severity: 2,
-                isPriority: false
-            )
-        ]
     }
 }
