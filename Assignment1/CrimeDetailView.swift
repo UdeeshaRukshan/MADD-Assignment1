@@ -207,7 +207,7 @@ struct CrimeDetailView: View {
                         .offset(y: -20)
                         
                         // Section 2: Description
-                        VStack(alignment: .leading, spacing: 16) {
+                        VStack(alignment: .leading, spacing: 26) {
                             Text("DESCRIPTION")
                                 .font(.caption)
                                 .fontWeight(.bold)

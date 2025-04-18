@@ -6,6 +6,17 @@ struct MainTabView: View {
     
     var body: some View {
         ZStack {
+            // Add the modern gradient background here
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "2B32B2"),
+                    Color(hex: "1488CC")
+                ]),
+                startPoint: .topLeading,
+                endPoint: .bottomTrailing
+            )
+            .edgesIgnoringSafeArea(.all)
+            
             TabView {
                 // Crime Map & Reporting Tab
                 PlaceholderView()
@@ -37,12 +48,12 @@ struct MainTabView: View {
             .onAppear {
                 // Set the accent color for tab items
                 let appearance = UITabBarAppearance()
-                appearance.backgroundColor = UIColor.systemBackground
+                appearance.backgroundColor = UIColor(Color(hex: "141E30")) // Match gradient start
                 UITabBar.appearance().standardAppearance = appearance
                 UITabBar.appearance().scrollEdgeAppearance = appearance
                 
                 // Add this to onAppear for consistent appearance
-                UINavigationBar.appearance().tintColor = UIColor.systemBlue
+                UINavigationBar.appearance().tintColor = UIColor(Color(hex: "64B5F6")) // Match your accent color
             }
             
             // Floating SOS button

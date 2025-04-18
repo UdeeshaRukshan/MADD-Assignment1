@@ -54,7 +54,15 @@ struct CCTVListView: View {
                 
                 Spacer()
             }
-            .navigationTitle("Security Cameras")
+            .navigationBarTitleDisplayMode(.inline)
+            .toolbar {
+                ToolbarItem(placement: .principal) {
+                    Text("Security Cameras")
+                        .font(.system(size: 24, weight: .bold)) // 👈 Custom size and style
+                        .foregroundColor(.primary)
+                }
+            }
+
             .sheet(isPresented: $showPreview) {
                 if let camera = selectedCamera {
                     CameraPreviewView(camera: camera)

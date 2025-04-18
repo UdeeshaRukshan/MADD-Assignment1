@@ -94,99 +94,167 @@ struct ChatListView: View {
     
     var body: some View {
         NavigationStack {
-            VStack(spacing: 0) {
-                // Segmented control for public/private chats
-                Picker("Chat Type", selection: $showingPublicChats) {
-                    Text("Public Channels").tag(true)
-                    Text("Private Messages").tag(false)
-                }
-                .pickerStyle(.segmented)
-                .padding()
+            ZStack {
+                // Add the modern gradient background
+                LinearGradient(
+                    gradient: Gradient(colors: [
+                        Color(hex: "141E30"),
+                        Color(hex: "243B55")
+                    ]),
+                    startPoint: .top,
+                    endPoint: .bottom
+                )
+                .edgesIgnoringSafeArea(.all)
                 
-                // Search bar
-                HStack {
-                    Image(systemName: "magnifyingglass")
-                        .foregroundColor(.gray)
-                    
-                    TextField("Search", text: $searchText)
-                        .textFieldStyle(RoundedBorderTextFieldStyle())
-                }
-                .padding(.horizontal)
-                .padding(.bottom)
-                
-                // Chat list
-                if chatService.isLoading {
-                    ProgressView("Loading conversations...")
-                        .padding()
-                } else if let errorMessage = chatService.errorMessage {
-                    VStack {
-                        Text("Error: \(errorMessage)")
-                            .foregroundColor(.red)
-                            .padding()
-                        
-                        Button("Retry") {
-                            chatService.loadConversations(for: currentUser.id)
+                VStack(spacing: 0) {
+                    // Custom title styling to match theme
+                    HStack {
+                        VStack(alignment: .leading, spacing: 4) {
+                            Text("MESSAGES")
+                                .font(.system(size: 12, weight: .heavy))
+                                .foregroundColor(Color(hex: "64B5F6"))
+                                .kerning(2)
+                            
+                            Text("Communications Center")
+                                .font(.system(size: 22, weight: .bold))
+                                .foregroundColor(.white)
                         }
-                        .buttonStyle(.bordered)
-                    }
-                } else if filteredConversations.isEmpty {
-                    VStack(spacing: 20) {
-                        Image(systemName: showingPublicChats ? "person.3.fill" : "message.fill")
-                            .font(.system(size: 60))
-                            .foregroundColor(.gray.opacity(0.6))
-                            .padding(.top, 80)
                         
-                        Text(showingPublicChats ? "No Public Channels" : "No Private Messages")
-                            .font(.title3)
-                            .fontWeight(.semibold)
-                        
-                        Text(showingPublicChats ? 
-                             "Join a public channel or create one" : 
-                             "Start a conversation with someone")
-                            .foregroundColor(.gray)
-                            .multilineTextAlignment(.center)
-                            .padding(.horizontal, 40)
+                        Spacer()
                         
                         Button(action: {
                             showingNewChatSheet = true
                         }) {
-                            Label(showingPublicChats ? "Create Channel" : "Start Conversation", 
-                                 systemImage: "plus.circle.fill")
-                                .padding(.horizontal, 20)
-                                .padding(.vertical, 10)
-                                .background(Color.blue.opacity(0.1))
-                                .foregroundColor(.blue)
-                                .cornerRadius(20)
+                            Image(systemName: "square.and.pencil")
+                                .font(.system(size: 20))
+                                .foregroundColor(.white)
+                                .padding(12)
+                                .background(
+                                    Circle()
+                                        .fill(Color.white.opacity(0.15))
+                                )
+                                .overlay(
+                                    Circle()
+                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                )
                         }
-                        .padding(.top, 10)
                     }
-                } else {
-                    List {
-                        ForEach(filteredConversations) { conversation in
-                            NavigationLink(value: conversation) {
-                                ChatRowView(conversation: conversation)
+                    .padding(.horizontal)
+                    .padding(.top, 8)
+                    .padding(.bottom, 16)
+                    
+                    // Segmented control for public/private chats
+                    Picker("Chat Type", selection: $showingPublicChats) {
+                        Text("Public Channels").tag(true)
+                        Text("Private Messages").tag(false)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding()
+                    
+                    // Search bar
+                    HStack {
+                        Image(systemName: "magnifyingglass")
+                            .foregroundColor(Color(hex: "64B5F6"))
+                        
+                        TextField("Search", text: $searchText)
+                            .foregroundColor(.white)
+                        
+                        if !searchText.isEmpty {
+                            Button(action: { searchText = "" }) {
+                                Image(systemName: "xmark.circle.fill")
+                                    .foregroundColor(.gray)
                             }
                         }
                     }
-                    .listStyle(.plain)
-                    .refreshable {
-                        chatService.loadConversations(for: currentUser.id)
+                    .padding(12)
+                    .background(Color.white.opacity(0.1))
+                    .cornerRadius(10)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                    )
+                    .padding(.horizontal)
+                    .padding(.bottom, 16)
+                    
+                    // Chat list
+                    if chatService.isLoading {
+                        ProgressView("Loading conversations...")
+                            .foregroundColor(.white)
+                            .padding()
+                    } else if let errorMessage = chatService.errorMessage {
+                        VStack {
+                            Text("Error: \(errorMessage)")
+                                .foregroundColor(Color(hex: "FF416C"))
+                                .padding()
+                            
+                            Button("Retry") {
+                                chatService.loadConversations(for: currentUser.id)
+                            }
+                            .padding(.horizontal, 20)
+                            .padding(.vertical, 10)
+                            .background(Color(hex: "64B5F6").opacity(0.2))
+                            .foregroundColor(Color(hex: "64B5F6"))
+                            .cornerRadius(10)
+                        }
+                    } else if filteredConversations.isEmpty {
+                        VStack(spacing: 20) {
+                            Image(systemName: showingPublicChats ? "person.3.fill" : "message.fill")
+                                .font(.system(size: 60))
+                                .foregroundColor(Color(hex: "64B5F6").opacity(0.6))
+                                .padding(.top, 80)
+                            
+                            Text(showingPublicChats ? "No Public Channels" : "No Private Messages")
+                                .font(.title3)
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                            
+                            Text(showingPublicChats ? 
+                                 "Join a public channel or create one" : 
+                                 "Start a conversation with someone")
+                                .foregroundColor(.gray)
+                                .multilineTextAlignment(.center)
+                                .padding(.horizontal, 40)
+                            
+                            Button(action: {
+                                showingNewChatSheet = true
+                            }) {
+                                Label(showingPublicChats ? "Create Channel" : "Start Conversation", 
+                                     systemImage: "plus.circle.fill")
+                                    .padding(.horizontal, 20)
+                                    .padding(.vertical, 10)
+                                    .background(Color(hex: "64B5F6").opacity(0.2))
+                                    .foregroundColor(Color(hex: "64B5F6"))
+                                    .cornerRadius(20)
+                            }
+                            .padding(.top, 10)
+                        }
+                    } else {
+                        ScrollView {
+                            LazyVStack(spacing: 16) {
+                                ForEach(filteredConversations) { conversation in
+                                    NavigationLink(value: conversation) {
+                                        ChatRowView(conversation: conversation)
+                                            .padding(.horizontal, 16)
+                                            .padding(.vertical, 10)
+                                            .background(Color(hex: "1A2133"))
+                                            .cornerRadius(12)
+                                            .overlay(
+                                                RoundedRectangle(cornerRadius: 12)
+                                                    .stroke(Color.white.opacity(0.1), lineWidth: 1)
+                                            )
+                                            .padding(.horizontal)
+                                    }
+                                }
+                            }
+                            .padding(.vertical)
+                        }
                     }
                 }
             }
-            .navigationTitle("Chats")
+            .navigationBarHidden(true)
             .navigationDestination(for: ChatConversation.self) { conversation in
                 let viewModel = ConversationViewModel(conversation: conversation, chatService: chatService)
                 ChatDetailView(conversationViewModel: viewModel, currentUser: currentUser, chatService: chatService)
-            }
-            .toolbar {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        showingNewChatSheet = true
-                    }) {
-                        Image(systemName: "square.and.pencil")
-                    }
-                }
             }
             .sheet(isPresented: $showingNewChatSheet) {
                 NewChatView(chatService: chatService, currentUser: currentUser, isPublic: showingPublicChats)
@@ -208,11 +276,11 @@ struct ChatRowView: View {
             if conversation.isPublic {
                 ZStack {
                     Circle()
-                        .fill(Color.blue.opacity(0.2))
+                        .fill(Color(hex: "2D4263").opacity(0.7))
                         .frame(width: 50, height: 50)
                     
                     Image(systemName: conversation.title.contains("Alert") ? "bell.fill" : "person.3.fill")
-                        .foregroundColor(.blue)
+                        .foregroundColor(Color(hex: "64D2FF"))
                         .font(.system(size: 22))
                 }
             } else {
@@ -220,18 +288,19 @@ struct ChatRowView: View {
                     .resizable()
                     .aspectRatio(contentMode: .fill)
                     .frame(width: 50, height: 50)
-                    .foregroundColor(.blue)
+                    .foregroundColor(Color(hex: "64D2FF"))
             }
             
             VStack(alignment: .leading, spacing: 4) {
                 HStack {
                     Text(conversation.title)
                         .font(.headline)
+                        .foregroundColor(Color(hex: "E0E0E0"))
                         .lineLimit(1)
                     
                     if !conversation.isPublic && conversation.participants.first?.isVerified == true {
                         Image(systemName: "checkmark.seal.fill")
-                            .foregroundColor(.blue)
+                            .foregroundColor(Color(hex: "4A90E2"))
                             .font(.system(size: 12))
                     }
                     
@@ -240,7 +309,7 @@ struct ChatRowView: View {
                     if let lastMessage = conversation.lastMessage {
                         Text(formatDate(lastMessage.timestamp))
                             .font(.caption)
-                            .foregroundColor(.gray)
+                            .foregroundColor(Color(hex: "9EAFC2"))
                     }
                 }
                 
@@ -248,13 +317,13 @@ struct ChatRowView: View {
                     if let lastMessage = conversation.lastMessage {
                         if lastMessage.isAlert {
                             Image(systemName: "exclamationmark.triangle.fill")
-                                .foregroundColor(.orange)
+                                .foregroundColor(Color(hex: "FF6B6B"))
                                 .font(.system(size: 12))
                         }
                         
                         Text(lastMessage.sender.name == "You" ? "You: \(lastMessage.content)" : lastMessage.content)
                             .font(.subheadline)
-                            .foregroundColor(lastMessage.isAlert ? .orange : .gray)
+                            .foregroundColor(lastMessage.isAlert ? Color(hex: "FF6B6B") : Color(hex: "9EAFC2"))
                             .lineLimit(1)
                     }
                     
@@ -266,7 +335,7 @@ struct ChatRowView: View {
                             .foregroundColor(.white)
                             .padding(.horizontal, 8)
                             .padding(.vertical, 4)
-                            .background(Color.blue)
+                            .background(Color(hex: "4A90E2"))
                             .clipShape(Capsule())
                     }
                 }
@@ -301,81 +370,111 @@ struct ChatDetailView: View {
     @Environment(\.dismiss) private var dismiss
     
     var body: some View {
-        VStack(spacing: 0) {
-            // Chat messages
-            ScrollView {
-                LazyVStack(spacing: 12) {
-                    ForEach(conversationViewModel.conversation.messages.sorted(by: { $0.timestamp < $1.timestamp })) { message in
-                        MessageBubble(message: message, isFromCurrentUser: message.sender.id == currentUser.id)
-                    }
-                }
-                .padding()
-            }
-            .scrollDismissesKeyboard(.immediately)
-            .scrollIndicators(.hidden)
+        ZStack {
+            // Add the modern gradient background
+            LinearGradient(
+                gradient: Gradient(colors: [
+                    Color(hex: "141E30"),
+                    Color(hex: "243B55")
+                ]),
+                startPoint: .top,
+                endPoint: .bottom
+            )
+            .edgesIgnoringSafeArea(.all)
             
-            // Message input
             VStack(spacing: 0) {
-                Divider()
-                
-                HStack(spacing: 12) {
+                // Custom header
+                HStack {
                     Button(action: {
-                        isShowingAttachmentOptions.toggle()
+                        dismiss()
                     }) {
-                        Image(systemName: "plus.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(.blue)
+                        Image(systemName: "chevron.left")
+                            .font(.title3.weight(.semibold))
+                            .foregroundColor(.white)
                     }
                     
-                    TextField("Type a message", text: $messageText)
-                        .padding(10)
-                        .background(Color(.systemGray6))
-                        .cornerRadius(20)
+                    Spacer()
                     
-                    Button(action: sendMessage) {
-                        Image(systemName: "arrow.up.circle.fill")
-                            .font(.system(size: 24))
-                            .foregroundColor(messageText.isEmpty ? .gray : .blue)
+                    Text(conversationViewModel.conversation.title)
+                        .font(.title3)
+                        .fontWeight(.bold)
+                        .foregroundColor(.white)
+                    
+                    Spacer()
+                    
+                    if !conversationViewModel.conversation.isPublic {
+                        Button(action: {
+                            // Call action
+                        }) {
+                            Image(systemName: "phone.fill")
+                                .foregroundColor(.white)
+                        }
                     }
-                    .disabled(messageText.isEmpty)
                 }
                 .padding()
+                .background(Color(hex: "1A2133"))
                 
-                if isShowingAttachmentOptions {
-                    HStack(spacing: 20) {
-                        AttachmentButton(icon: "camera.fill", label: "Photo")
-                        AttachmentButton(icon: "location.fill", label: "Location")
-                        AttachmentButton(icon: "exclamationmark.triangle.fill", label: "Alert", action: {
-                            sendAlertMessage()
-                        })
-                        AttachmentButton(icon: "doc.fill", label: "Document")
+                // Chat messages
+                ScrollView {
+                    LazyVStack(spacing: 12) {
+                        ForEach(conversationViewModel.conversation.messages.sorted(by: { $0.timestamp < $1.timestamp })) { message in
+                            MessageBubble(message: message, isFromCurrentUser: message.sender.id == currentUser.id)
+                        }
                     }
-                    .padding(.horizontal)
-                    .padding(.bottom)
-                    .transition(.move(edge: .bottom))
+                    .padding()
+                }
+                .scrollDismissesKeyboard(.immediately)
+                .scrollIndicators(.hidden)
+                
+                // Message input
+                VStack(spacing: 0) {
+                    Divider()
+                        .background(Color.white.opacity(0.2))
+                    
+                    HStack(spacing: 12) {
+                        Button(action: {
+                            isShowingAttachmentOptions.toggle()
+                        }) {
+                            Image(systemName: "plus.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(Color(hex: "64B5F6"))
+                        }
+                        
+                        TextField("Type a message", text: $messageText)
+                            .padding(10)
+                            .background(Color(hex: "1A2133"))
+                            .foregroundColor(.white)
+                            .cornerRadius(20)
+                        
+                        Button(action: sendMessage) {
+                            Image(systemName: "arrow.up.circle.fill")
+                                .font(.system(size: 24))
+                                .foregroundColor(messageText.isEmpty ? Color.gray : Color(hex: "64B5F6"))
+                        }
+                        .disabled(messageText.isEmpty)
+                    }
+                    .padding()
+                    .background(Color(hex: "243B55"))
+                    
+                    if isShowingAttachmentOptions {
+                        HStack(spacing: 20) {
+                            AttachmentButton(icon: "camera.fill", label: "Photo")
+                            AttachmentButton(icon: "location.fill", label: "Location")
+                            AttachmentButton(icon: "exclamationmark.triangle.fill", label: "Alert", action: {
+                                sendAlertMessage()
+                            })
+                            AttachmentButton(icon: "doc.fill", label: "Document")
+                        }
+                        .padding(.horizontal)
+                        .padding(.bottom)
+                        .transition(.move(edge: .bottom))
+                        .background(Color(hex: "243B55"))
+                    }
                 }
             }
-            .background(Color(.systemBackground))
         }
-        .navigationTitle(conversationViewModel.conversation.title)
-        .navigationBarTitleDisplayMode(.inline)
-        .toolbar {
-            if !conversationViewModel.conversation.isPublic {
-                ToolbarItem(placement: .navigationBarTrailing) {
-                    Button(action: {
-                        // Call action
-                    }) {
-                        Image(systemName: "phone.fill")
-                    }
-                }
-            }
-        }
+        .navigationBarHidden(true)
         .onAppear {
-            print("ChatDetailView appeared with \(conversationViewModel.conversation.messages.count) messages")
-            conversationViewModel.conversation.messages.forEach { message in
-                print("Message: \(message.content) from \(message.sender.name)")
-            }
-            
             // Mark messages as read
             let unreadMessageIds = conversationViewModel.conversation.messages
                 .filter { !$0.isRead && $0.sender.id != currentUser.id }
@@ -582,7 +681,7 @@ struct MessageBubble: View {
                 if !isFromCurrentUser {
                     Text(message.sender.name)
                         .font(.caption)
-                        .foregroundColor(.gray)
+                        .foregroundColor(Color(hex: "9EAFC2"))
                         .padding(.leading, 8)
                 }
                 
@@ -597,24 +696,22 @@ struct MessageBubble: View {
                         .padding(.horizontal, 12)
                         .padding(.vertical, 8)
                         .background(
-                            message.isAlert ? Color.orange :
-                                (isFromCurrentUser ? Color.blue : Color(.systemGray5))
+                            message.isAlert ? Color(hex: "FF5252") :
+                                (isFromCurrentUser ? Color(hex: "4A90E2") : Color(hex: "2A3142"))
                         )
-                        .foregroundColor(
-                            (isFromCurrentUser || message.isAlert) ? .white : .primary
-                        )
+                        .foregroundColor(.white)
                         .cornerRadius(16)
                 }
                 
                 HStack {
                     Text(formatTime(message.timestamp))
                         .font(.caption2)
-                        .foregroundColor(.gray)
+                        .foregroundColor(Color(hex: "9EAFC2"))
                     
                     if isFromCurrentUser {
                         Image(systemName: message.isRead ? "checkmark.circle.fill" : "checkmark.circle")
                             .font(.system(size: 10))
-                            .foregroundColor(message.isRead ? .blue : .gray)
+                            .foregroundColor(message.isRead ? Color(hex: "5CDB95") : Color(hex: "9EAFC2"))
                     }
                 }
                 .padding(.horizontal, 8)
@@ -648,16 +745,28 @@ struct AttachmentButton: View {
                     .font(.system(size: 20))
                     .foregroundColor(.white)
                     .frame(width: 50, height: 50)
-                    .background(Color.blue)
+                    .background(
+                        LinearGradient(
+                            gradient: Gradient(colors: [
+                                Color(hex: "4A90E2"),
+                                Color(hex: "64D2FF")
+                            ]),
+                            startPoint: .topLeading,
+                            endPoint: .bottomTrailing
+                        )
+                    )
                     .clipShape(Circle())
+                    .shadow(color: Color(hex: "4A90E2").opacity(0.3), radius: 5, x: 0, y: 3)
                 
                 Text(label)
                     .font(.caption)
-                    .foregroundColor(.primary)
+                    .foregroundColor(Color(hex: "E0E0E0"))
             }
         }
     }
 }
+
+
 
 #Preview {
     ChatListView()
