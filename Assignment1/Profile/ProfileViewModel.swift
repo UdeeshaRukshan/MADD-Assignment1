@@ -2,7 +2,7 @@ import SwiftUI
 
 class ProfileViewModel: ObservableObject {
     @Published var name: String = "Udeesha Rukshan"
-    @Published var role: String = "Citicen"
+    @Published var role: String = "Citizen"
     @Published var email: String = "udeeshagamage12@gmail.com"
     @Published var phone: String = "+940702796111"
     @Published var location: String = "Kaduwela"
