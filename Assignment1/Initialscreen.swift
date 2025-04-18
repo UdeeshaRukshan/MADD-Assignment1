@@ -39,18 +39,17 @@ struct InitialScreen: View {
                 VStack(spacing: 30) {
                     // Logo
                     ZStack {
-                        Circle()
-                            .fill(Color.white)
-                            .frame(width: 120, height: 120)
-                            .shadow(color: .black.opacity(0.1), radius: 10, x: 0, y: 5)
-                        
+                       
                         // Replace with your app icon or custom logo
-                        Image(systemName: "star.fill")
+                        Image("staysafe")
                             .resizable()
-                            .aspectRatio(contentMode: .fit)
-                            .frame(width: 60, height: 60)
-                            .foregroundColor(.blue)
-                            .rotationEffect(.degrees(rotation))
+                            .aspectRatio(contentMode: .fill)
+                            .frame(width: 130, height: 150)
+//                            .overlay(Circle().stroke(Color.white, lineWidth: 4))
+                            
+                           
+
+
                     }
                     .scaleEffect(logoScale)
                     
