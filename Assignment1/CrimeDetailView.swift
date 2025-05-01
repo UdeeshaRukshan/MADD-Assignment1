@@ -207,33 +207,40 @@ struct CrimeDetailView: View {
                         .offset(y: -20)
                         
                         // Section 2: Description
-                        VStack(alignment: .leading, spacing: 26) {
+                        VStack(alignment: .leading, spacing: 16) {
                             Text("DESCRIPTION")
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(Color(hex: "64B5F6"))
                             
-                            Text(crime.description)
-                                .font(.body)
-                                .foregroundColor(.white.opacity(0.9))
-                                .lineLimit(showFullDescription ? nil : 4)
-                            
-                            if !showFullDescription {
-                                Button(action: {
-                                    withAnimation {
-                                        showFullDescription = true
+                            VStack(alignment: .leading, spacing: 8) {
+                                Text(crime.description)
+                                    .font(.body)
+                                    .foregroundColor(.white.opacity(0.9))
+                                    .lineLimit(showFullDescription ? nil : 4)
+                                    .frame(maxWidth: .infinity, alignment: .leading)
+                                
+                                if !showFullDescription && crime.description.count > 200 {
+                                    Button(action: {
+                                        withAnimation {
+                                            showFullDescription = true
+                                        }
+                                    }) {
+                                        Text("Read more")
+                                            .font(.subheadline)
+                                            .foregroundColor(Color(hex: "64B5F6"))
+                                            .frame(maxWidth: .infinity, alignment: .trailing)
+                                            .padding(.top, 4)
                                     }
-                                }) {
-                                    Text("Read more")
-                                        .font(.subheadline)
-                                        .foregroundColor(Color(hex: "64B5F6"))
                                 }
                             }
+                            .frame(minHeight: 100)
                         }
                         .padding(.horizontal, 20)
                         .padding(.top, 16)
                         .padding(.bottom, 24)
                         .background(Color(hex: "1A2133").opacity(0.7))
+                        .frame(maxWidth: .infinity)
                         
                         // Section 3: Location Details
                         VStack(alignment: .leading, spacing: 16) {
@@ -241,6 +248,7 @@ struct CrimeDetailView: View {
                                 .font(.caption)
                                 .fontWeight(.bold)
                                 .foregroundColor(Color(hex: "64B5F6"))
+                                .frame(maxWidth: .infinity, alignment: .leading)
                             
                             if crime.locations.count > 1 {
                                 // Location selector
@@ -277,6 +285,7 @@ struct CrimeDetailView: View {
                                     }
                                     .padding(.bottom, 8)
                                 }
+                                .frame(height: 44)
                             }
                             
                             // Selected location details
@@ -285,59 +294,72 @@ struct CrimeDetailView: View {
                                 
                                 VStack(alignment: .leading, spacing: 12) {
                                     // Address
-                                    Label {
+                                    HStack(alignment: .top) {
+                                        Image(systemName: "location.fill")
+                                            .foregroundColor(Color(hex: "64B5F6"))
+                                            .frame(width: 24)
+                                        
                                         Text(location.address)
                                             .font(.subheadline)
                                             .foregroundColor(.white.opacity(0.9))
-                                    } icon: {
-                                        Image(systemName: "location.fill")
-                                            .foregroundColor(Color(hex: "64B5F6"))
+                                            .fixedSize(horizontal: false, vertical: true)
                                     }
                                     
                                     // Time
-                                    Label {
+                                    HStack {
+                                        Image(systemName: "clock.fill")
+                                            .foregroundColor(Color(hex: "64B5F6"))
+                                            .frame(width: 24)
+                                        
                                         Text(location.timestamp.formatted(date: .abbreviated, time: .shortened))
                                             .font(.subheadline)
                                             .foregroundColor(.white.opacity(0.9))
-                                    } icon: {
-                                        Image(systemName: "clock.fill")
-                                            .foregroundColor(Color(hex: "64B5F6"))
                                     }
                                     
                                     // Witnesses
-                                    Label {
+                                    HStack {
+                                        Image(systemName: "person.fill")
+                                            .foregroundColor(Color(hex: "64B5F6"))
+                                            .frame(width: 24)
+                                        
                                         Text("\(location.witnesses) witness\(location.witnesses != 1 ? "es" : "")")
                                             .font(.subheadline)
                                             .foregroundColor(.white.opacity(0.9))
-                                    } icon: {
-                                        Image(systemName: "person.fill")
-                                            .foregroundColor(Color(hex: "64B5F6"))
                                     }
                                     
                                     // Status
-                                    Label {
+                                    HStack {
+                                        Image(systemName: location.isSolved ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
+                                            .foregroundColor(location.isSolved ? .green : .orange)
+                                            .frame(width: 24)
+                                        
                                         Text(location.isSolved ? "Case closed" : "Under investigation")
                                             .font(.subheadline)
                                             .foregroundColor(location.isSolved ? .green : .orange)
-                                    } icon: {
-                                        Image(systemName: location.isSolved ? "checkmark.seal.fill" : "exclamationmark.triangle.fill")
-                                            .foregroundColor(location.isSolved ? .green : .orange)
                                     }
+                                    
+                                    Divider()
+                                        .background(Color.gray.opacity(0.3))
+                                        .padding(.vertical, 8)
                                     
                                     // Description
                                     Text(location.description)
                                         .font(.body)
                                         .foregroundColor(.white.opacity(0.8))
-                                        .padding(.top, 8)
+                                        .fixedSize(horizontal: false, vertical: true)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+                                        .padding(.top, 4)
                                 }
                                 .padding(16)
                                 .background(Color(hex: "243B55").opacity(0.5))
                                 .cornerRadius(12)
+                                .frame(maxWidth: .infinity)
                             }
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 24)
                         .background(Color(hex: "1A2133"))
+                        .frame(maxWidth: .infinity)
                         
                         // Section 4: Actions
                         VStack(spacing: 16) {

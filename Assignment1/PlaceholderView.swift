@@ -14,6 +14,23 @@ struct PlaceholderView: View {
     @State private var selectedTab = 0
     @State private var searchText = ""
     
+    // Add this computed property for filtered crimes
+    private var filteredCrimes: [CriminalActivity] {
+        if searchText.isEmpty {
+            return viewModel.criminalActivities
+        } else {
+            return viewModel.criminalActivities.filter { crime in
+                crime.title.localizedCaseInsensitiveContains(searchText) ||
+                crime.description.localizedCaseInsensitiveContains(searchText) ||
+                crime.category.rawValue.localizedCaseInsensitiveContains(searchText) ||
+                crime.locations.contains(where: { 
+                    $0.title.localizedCaseInsensitiveContains(searchText) ||
+                    $0.address.localizedCaseInsensitiveContains(searchText)
+                })
+            }
+        }
+    }
+    
     var body: some View {
         NavigationView {
             ZStack {
@@ -130,39 +147,67 @@ struct PlaceholderView: View {
                     .padding(.horizontal)
                     .padding(.bottom, 8)
                     
-                    // Tab content area - This is what's missing
+                    // Tab content area
                     if selectedTab == 0 { // Recent
                         // Crime list
                         ScrollView {
-                            LazyVStack(spacing: 16) {
-                                ForEach(viewModel.criminalActivities) { crime in
-                                    NavigationLink(destination: CrimeDetailView(crime: crime)) {
-                                        CrimeCard(crime: crime)
-                                            .transition(.scale)
+                            if searchText.isEmpty || !filteredCrimes.isEmpty {
+                                LazyVStack(spacing: 16) {
+                                    ForEach(filteredCrimes) { crime in
+                                        NavigationLink(destination: CrimeDetailView(crime: crime)) {
+                                            CrimeCard(crime: crime)
+                                                .transition(.scale)
+                                        }
                                     }
                                 }
+                                .padding()
+                            } else {
+                                // Show empty search results message
+                                VStack(spacing: 20) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(Color(hex: "64B5F6").opacity(0.8))
+                                        .padding()
+                                    
+                                    Text("No Results Found")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    
+                                    Text("Try another search term")
+                                        .foregroundColor(.gray)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 60)
                             }
-                            .padding()
                         }
                     } else if selectedTab == 1 { // Nearby
                         ScrollView {
                             VStack(spacing: 20) {
                                 // Map view for nearby crimes
                                 Map(coordinateRegion: .constant(MKCoordinateRegion(
-                                    center: CLLocationCoordinate2D(latitude: 37.7749, longitude: -122.4194),
+                                    center: CLLocationCoordinate2D(latitude: 6.9311, longitude: 79.9794),
                                     span: MKCoordinateSpan(latitudeDelta: 0.05, longitudeDelta: 0.05)
                                 )))
                                 .frame(height: 200)
                                 .cornerRadius(12)
                                 .padding(.horizontal)
                                 
-                                // Nearby crimes list
+                                // Nearby crimes list - filter this too
                                 LazyVStack(spacing: 16) {
-                                    ForEach(viewModel.criminalActivities.prefix(3)) { crime in
-                                        NavigationLink(destination: CrimeDetailView(crime: crime)) {
-                                            CrimeCard(crime: crime)
-                                                .transition(.scale)
+                                    if searchText.isEmpty || !filteredCrimes.isEmpty {
+                                        ForEach(filteredCrimes.prefix(3)) { crime in
+                                            NavigationLink(destination: CrimeDetailView(crime: crime)) {
+                                                CrimeCard(crime: crime)
+                                                    .transition(.scale)
+                                            }
                                         }
+                                    } else {
+                                        // Show empty search results message
+                                        Text("No nearby results match your search")
+                                            .font(.subheadline)
+                                            .foregroundColor(.gray)
+                                            .padding(.vertical, 20)
                                     }
                                 }
                                 .padding(.horizontal)
@@ -170,34 +215,56 @@ struct PlaceholderView: View {
                         }
                     } else { // Alerts (selectedTab == 2)
                         ScrollView {
-                            VStack(spacing: 16) {
-                                ForEach(viewModel.criminalActivities.filter { $0.isPriority }) { crime in
-                                    NavigationLink(destination: CrimeDetailView(crime: crime)) {
-                                        CrimeCard(crime: crime)
-                                            .transition(.scale)
+                            // Filter priority crimes
+                            let filteredPriorityCrimes = filteredCrimes.filter { $0.isPriority }
+                            
+                            if searchText.isEmpty || !filteredPriorityCrimes.isEmpty {
+                                VStack(spacing: 16) {
+                                    ForEach(filteredPriorityCrimes) { crime in
+                                        NavigationLink(destination: CrimeDetailView(crime: crime)) {
+                                            CrimeCard(crime: crime)
+                                                .transition(.scale)
+                                        }
                                     }
                                 }
-                                
-                                if viewModel.criminalActivities.filter({ $0.isPriority }).isEmpty {
-                                    VStack(spacing: 20) {
-                                        Image(systemName: "checkmark.shield.fill")
-                                            .font(.system(size: 60))
-                                            .foregroundColor(Color(hex: "64B5F6").opacity(0.8))
-                                            .padding()
-                                        
-                                        Text("No Priority Alerts")
-                                            .font(.title2)
-                                            .fontWeight(.bold)
-                                            .foregroundColor(.white)
-                                        
-                                        Text("You're all caught up!")
-                                            .foregroundColor(.gray)
-                                    }
-                                    .frame(maxWidth: .infinity)
-                                    .padding(.vertical, 60)
+                                .padding()
+                            } else if !searchText.isEmpty {
+                                // Show empty search results for priority crimes
+                                VStack(spacing: 20) {
+                                    Image(systemName: "magnifyingglass")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(Color(hex: "64B5F6").opacity(0.8))
+                                        .padding()
+                                    
+                                    Text("No Priority Alerts Found")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    
+                                    Text("No priority crimes match your search")
+                                        .foregroundColor(.gray)
                                 }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 60)
+                            } else if filteredPriorityCrimes.isEmpty {
+                                // Original empty state for no priority crimes
+                                VStack(spacing: 20) {
+                                    Image(systemName: "checkmark.shield.fill")
+                                        .font(.system(size: 60))
+                                        .foregroundColor(Color(hex: "64B5F6").opacity(0.8))
+                                        .padding()
+                                    
+                                    Text("No Priority Alerts")
+                                        .font(.title2)
+                                        .fontWeight(.bold)
+                                        .foregroundColor(.white)
+                                    
+                                    Text("You're all caught up!")
+                                        .foregroundColor(.gray)
+                                }
+                                .frame(maxWidth: .infinity)
+                                .padding(.vertical, 60)
                             }
-                            .padding()
                         }
                     }
                     

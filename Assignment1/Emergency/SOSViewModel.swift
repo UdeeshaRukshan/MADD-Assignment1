@@ -7,7 +7,7 @@ import SwiftUI
 class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAudioRecorderDelegate {
     // State tracking
     @Published var isCountdownActive = true
-    @Published var timeRemaining: TimeInterval = 5
+    @Published var timeRemaining: TimeInterval = 15
     @Published var isRecording = false
     @Published var emergencyContacts: [EmergencyContact] = []
     
@@ -33,7 +33,7 @@ class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAud
     
     func startCountdown() {
         // Reset state
-        timeRemaining = 5
+        timeRemaining = 15
         isCountdownActive = true
         
         // Play warning sound
@@ -141,10 +141,7 @@ class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAud
             let phoneNumber = "tel://\(emergencyService.phoneNumber.replacingOccurrences(of: "-", with: ""))"
             print("Calling emergency services: \(phoneNumber)")
             
-            // Note: In a real app, we would use this code to actually make the call
-            // if let url = URL(string: phoneNumber), UIApplication.shared.canOpenURL(url) {
-            //     UIApplication.shared.open(url)
-            // }
+
         }
     }
     
