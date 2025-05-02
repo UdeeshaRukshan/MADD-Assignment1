@@ -57,8 +57,7 @@ enum CrimeCategory: String, CaseIterable {
     case theft = "Theft"
     case assault = "Assault"
     case vandalism = "Vandalism"
-    case drugRelated = "Drug Related"
-    case fraud = "Fraud"
+    
     case other = "Other"
     
     

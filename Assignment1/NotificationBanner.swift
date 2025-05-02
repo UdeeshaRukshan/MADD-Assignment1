@@ -57,6 +57,7 @@ struct NotificationBanner: View {
 struct NotificationContentView: View {
     @ObservedObject var viewModel: CrimeViewModel
     @Environment(\.dismiss) private var dismiss
+    @ObservedObject private var notificationService = NotificationService.shared
     
     var body: some View {
         ZStack {
@@ -102,6 +103,44 @@ struct NotificationContentView: View {
                 .padding(.horizontal)
                 .padding(.top, 16)
                 .padding(.bottom, 16)
+                
+                // Add permission request if needed
+                if !notificationService.isPermissionGranted {
+                    VStack(spacing: 10) {
+                        Text("Enable Notifications")
+                            .font(.headline)
+                            .foregroundColor(.white)
+                        
+                        Text("Get real-time alerts about critical safety issues in your area")
+                            .font(.subheadline)
+                            .foregroundColor(.gray)
+                            .multilineTextAlignment(.center)
+                            .padding(.horizontal)
+                        
+                        Button(action: {
+                            NotificationService.shared.requestPermission()
+                        }) {
+                            Text("Enable Notifications")
+                                .fontWeight(.semibold)
+                                .foregroundColor(.white)
+                                .padding(.vertical, 12)
+                                .padding(.horizontal, 20)
+                                .background(Color(hex: "64B5F6"))
+                                .cornerRadius(8)
+                        }
+                        .padding(.top, 8)
+                    }
+                    .padding(.vertical, 16)
+                    .padding(.horizontal, 20)
+                    .background(Color(hex: "1A2133").opacity(0.8))
+                    .cornerRadius(12)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 12)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                    .padding(.horizontal)
+                    .padding(.top, 16)
+                }
                 
                 // Notification display
                 if let message = viewModel.notificationMessage {

@@ -67,6 +67,7 @@ struct ChatListView: View {
     @State private var showingPublicChats = true
     @State private var searchText = ""
     @State private var showingNewChatSheet = false
+    @State private var selectedConversation: ChatConversation? // Use this for programmatic navigation
     
     // Current user - In a real app, this would come from your auth system
     let currentUser = ChatUser(
@@ -232,7 +233,10 @@ struct ChatListView: View {
                         ScrollView {
                             LazyVStack(spacing: 16) {
                                 ForEach(filteredConversations) { conversation in
-                                    NavigationLink(value: conversation) {
+                                    Button {
+                                        // Set the selected conversation for navigation
+                                        selectedConversation = conversation
+                                    } label: {
                                         ChatRowView(conversation: conversation)
                                             .padding(.horizontal, 16)
                                             .padding(.vertical, 10)
@@ -244,6 +248,7 @@ struct ChatListView: View {
                                             )
                                             .padding(.horizontal)
                                     }
+                                    .buttonStyle(PlainButtonStyle())
                                 }
                             }
                             .padding(.vertical)
@@ -251,10 +256,30 @@ struct ChatListView: View {
                     }
                 }
             }
-            .navigationBarHidden(true)
-            .navigationDestination(for: ChatConversation.self) { conversation in
-                let viewModel = ConversationViewModel(conversation: conversation, chatService: chatService)
-                ChatDetailView(conversationViewModel: viewModel, currentUser: currentUser, chatService: chatService)
+            .navigationTitle("Messages")
+            .navigationBarTitleDisplayMode(.inline)
+            .navigationDestination(isPresented: Binding(
+                get: { selectedConversation != nil },
+                set: { if !$0 { selectedConversation = nil } }
+            )) {
+                if let conversation = selectedConversation {
+                    let viewModel = ConversationViewModel(conversation: conversation, chatService: chatService)
+                    ChatDetailView(
+                        conversationViewModel: viewModel, 
+                        currentUser: currentUser, 
+                        chatService: chatService, 
+                        onDismiss: { selectedConversation = nil }
+                    )
+                }
+            }
+            .toolbar {
+                ToolbarItem(placement: .navigationBarTrailing) {
+                    Button {
+                        showingNewChatSheet = true
+                    } label: {
+                        Image(systemName: "square.and.pencil")
+                    }
+                }
             }
             .sheet(isPresented: $showingNewChatSheet) {
                 NewChatView(chatService: chatService, currentUser: currentUser, isPublic: showingPublicChats)
@@ -368,6 +393,7 @@ struct ChatDetailView: View {
     @State private var messageText = ""
     @State private var isShowingAttachmentOptions = false
     @Environment(\.dismiss) private var dismiss
+    var onDismiss: (() -> Void)? // Add this callback
     
     var body: some View {
         ZStack {
@@ -385,13 +411,16 @@ struct ChatDetailView: View {
             VStack(spacing: 0) {
                 // Custom header
                 HStack {
-                    Button(action: {
+                    Button {
+                        // Call custom dismiss action first
+                        // Then dismiss the view
                         dismiss()
-                    }) {
+                    } label: {
                         Image(systemName: "chevron.left")
                             .font(.title3.weight(.semibold))
                             .foregroundColor(.white)
                     }
+                    .buttonStyle(BorderlessButtonStyle())
                     
                     Spacer()
                     
@@ -473,7 +502,6 @@ struct ChatDetailView: View {
                 }
             }
         }
-        .navigationBarHidden(true)
         .onAppear {
             // Mark messages as read
             let unreadMessageIds = conversationViewModel.conversation.messages
@@ -672,54 +700,57 @@ struct MessageBubble: View {
     let isFromCurrentUser: Bool
     
     var body: some View {
-        HStack {
-            if isFromCurrentUser {
-                Spacer()
-            }
-            
-            VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 4) {
-                if !isFromCurrentUser {
-                    Text(message.sender.name)
-                        .font(.caption)
-                        .foregroundColor(Color(hex: "9EAFC2"))
-                        .padding(.leading, 8)
+        VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 8) {
+            HStack {
+                if isFromCurrentUser {
+                    Spacer()
                 }
                 
-                HStack {
-                    if message.isAlert && !isFromCurrentUser {
-                        Image(systemName: "exclamationmark.triangle.fill")
+                VStack(alignment: isFromCurrentUser ? .trailing : .leading, spacing: 4) {
+                    if !isFromCurrentUser {
+                        Text(message.sender.name)
+                            .font(.caption)
+                            .foregroundColor(Color(hex: "9EAFC2"))
+                            .padding(.leading, 8)
+                    }
+                    
+                    HStack {
+                        if message.isAlert && !isFromCurrentUser {
+                            Image(systemName: "exclamationmark.triangle.fill")
+                                .foregroundColor(.white)
+                                .font(.system(size: 14))
+                        }
+                        
+                        Text(message.content)
+                            .padding(.horizontal, 12)
+                            .padding(.vertical, 8)
+                            .background(
+                                message.isAlert ? Color(hex: "FF5252") :
+                                    (isFromCurrentUser ? Color(hex: "4A90E2") : Color(hex: "2A3142"))
+                            )
                             .foregroundColor(.white)
-                            .font(.system(size: 14))
+                            .cornerRadius(16)
                     }
                     
-                    Text(message.content)
-                        .padding(.horizontal, 12)
-                        .padding(.vertical, 8)
-                        .background(
-                            message.isAlert ? Color(hex: "FF5252") :
-                                (isFromCurrentUser ? Color(hex: "4A90E2") : Color(hex: "2A3142"))
-                        )
-                        .foregroundColor(.white)
-                        .cornerRadius(16)
+                    HStack {
+                        Text(formatTime(message.timestamp))
+                            .font(.caption2)
+                            .foregroundColor(Color(hex: "9EAFC2"))
+                        
+                        if isFromCurrentUser {
+                            Image(systemName: message.isRead ? "checkmark.circle.fill" : "checkmark.circle")
+                                .font(.system(size: 10))
+                                .foregroundColor(message.isRead ? Color(hex: "5CDB95") : Color(hex: "9EAFC2"))
+                        }
+                    }
+                    .padding(.horizontal, 8)
                 }
                 
-                HStack {
-                    Text(formatTime(message.timestamp))
-                        .font(.caption2)
-                        .foregroundColor(Color(hex: "9EAFC2"))
-                    
-                    if isFromCurrentUser {
-                        Image(systemName: message.isRead ? "checkmark.circle.fill" : "checkmark.circle")
-                            .font(.system(size: 10))
-                            .foregroundColor(message.isRead ? Color(hex: "5CDB95") : Color(hex: "9EAFC2"))
-                    }
+                if !isFromCurrentUser {
+                    Spacer()
                 }
-                .padding(.horizontal, 8)
             }
             
-            if !isFromCurrentUser {
-                Spacer()
-            }
         }
     }
     
@@ -766,7 +797,102 @@ struct AttachmentButton: View {
     }
 }
 
+// MARK: - Typing Indicator
+struct TypingIndicator: View {
+    @State private var dotsOpacity: Double = 0.3
+    
+    var body: some View {
+        HStack(spacing: 4) {
+            ForEach(0..<3) { index in
+                Circle()
+                    .frame(width: 6, height: 6)
+                    .opacity(dotsOpacity)
+                    .animation(
+                        Animation.easeInOut(duration: 0.5)
+                            .repeatForever()
+                            .delay(0.2 * Double(index)),
+                        value: dotsOpacity
+                    )
+            }
+        }
+        .padding(8)
+        .background(Color(UIColor.systemGray6))
+        .cornerRadius(12)
+        .onAppear {
+            dotsOpacity = 0.9
+        }
+    }
+}
 
+
+// MARK: - Voice Message Recorder
+struct VoiceMessageRecorder: View {
+    @State private var isRecording = false
+    @State private var recordingTime: TimeInterval = 0
+    @State private var timer: Timer?
+    var onComplete: (URL) -> Void
+    
+    var body: some View {
+        VStack {
+            if isRecording {
+                HStack {
+                    Text(timeString(from: recordingTime))
+                        .font(.title2)
+                        .monospacedDigit()
+                    
+                    // Waveform visualization
+                    ForEach(0..<10, id: \.self) { _ in
+                        RoundedRectangle(cornerRadius: 3)
+                            .frame(width: 3, height: CGFloat.random(in: 5...30))
+                            .animation(.easeInOut(duration: 0.2), value: isRecording)
+                    }
+                }
+                .padding()
+                
+                Button(action: stopRecording) {
+                    Image(systemName: "stop.circle.fill")
+                        .font(.system(size: 54))
+                        .foregroundColor(.red)
+                }
+            } else {
+                Button(action: startRecording) {
+                    Image(systemName: "mic.circle.fill")
+                        .font(.system(size: 54))
+                        .foregroundColor(.blue)
+                }
+            }
+        }
+    }
+    
+    private func startRecording() {
+        // Permission and recording setup would go here
+        isRecording = true
+        recordingTime = 0
+        
+        timer = Timer.scheduledTimer(withTimeInterval: 0.1, repeats: true) { _ in
+            recordingTime += 0.1
+        }
+    }
+    
+    private func stopRecording() {
+        timer?.invalidate()
+        isRecording = false
+        
+        // Here you would stop recording and get the URL
+        // For demo, we're creating a mock URL
+        let documentsPath = FileManager.default.urls(for: .documentDirectory, in: .userDomainMask)[0]
+        let audioUrl = documentsPath.appendingPathComponent("recording.m4a")
+        
+        onComplete(audioUrl)
+    }
+    
+    private func timeString(from timeInterval: TimeInterval) -> String {
+        let minutes = Int(timeInterval) / 60
+        let seconds = Int(timeInterval) % 60
+        let tenths = Int((timeInterval - floor(timeInterval)) * 10)
+        return String(format: "%02d:%02d.%01d", minutes, seconds, tenths)
+    }
+}
 
 #Preview {
     ChatListView()

@@ -3,6 +3,7 @@ import SwiftUI
 struct MainTabView: View {
     @StateObject private var crimeViewModel = CrimeViewModel()
     @State private var sosActivated = false
+    @State private var selectedTab = 0 // Add this to control the tab state
     
     var body: some View {
         ZStack {
@@ -17,33 +18,35 @@ struct MainTabView: View {
             )
             .edgesIgnoringSafeArea(.all)
             
-            TabView {
+            TabView(selection: $selectedTab) {
                 // Crime Map & Reporting Tab
                 PlaceholderView()
                     .environmentObject(crimeViewModel)
                     .tabItem {
                         Label("Crime Map", systemImage: "map.fill")
                     }
+                    .tag(0)
                 
                 // Chat Features Tab
                 ChatListView()
                     .tabItem {
-                        Label("Communications", systemImage: "message.fill")
+                        Label("Chat", systemImage: "message.fill")
                     }
+                    .tag(1)
                 
                 // CCTV Monitoring Tab
                 CCTVListView()
                     .tabItem {
                         Label("CCTV", systemImage: "video.fill")
                     }
+                    .tag(2)
                 
                 // Profile Tab
-                NavigationStack {
-                    ProfileView()
-                }
-                .tabItem {
-                    Label("Profile", systemImage: "person.fill")
-                }
+                ProfileView()
+                    .tabItem {
+                        Label("Profile", systemImage: "person.fill")
+                    }
+                    .tag(3)
             }
             .onAppear {
                 // Set the accent color for tab items

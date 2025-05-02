@@ -17,6 +17,7 @@ struct AddCrimeFormView: View {
     @State private var description: String = ""
     @State private var category: CrimeCategory = .other
     @State private var severity: Int = 1
+    @State private var showingCategoryInfo = false
     
     // Location selection
     @State private var region = MKCoordinateRegion(
@@ -27,14 +28,22 @@ struct AddCrimeFormView: View {
     @State private var showingMap = false
     @State private var locationName: String = "No location selected"
     
+    // Category descriptions for help tooltip
+    private let categoryDescriptions: [CrimeCategory: String] = [
+        .theft: "Includes pickpocketing, shoplifting, vehicle theft, etc.",
+        .assault: "Physical attacks or threats against individuals",
+        .vandalism: "Destruction or defacement of property",
+        .other: "Any crime that doesn't fit the above categories"
+    ]
+    
     var body: some View {
         NavigationStack {
             ZStack {
-                // Light gradient background
+                // Dark gradient background to match other components
                 LinearGradient(
                     gradient: Gradient(colors: [
-                        Color(hex: "F8F9FA"),
-                        Color(hex: "E9ECEF")
+                        Color(hex: "141E30"),
+                        Color(hex: "243B55")
                     ]),
                     startPoint: .top,
                     endPoint: .bottom
@@ -45,104 +54,241 @@ struct AddCrimeFormView: View {
                 Form {
                     Section(header: 
                         Text("Crime Details")
-                            .foregroundColor(Color(hex: "495057"))
-                            .fontWeight(.medium)
+                            .foregroundColor(Color(hex: "64B5F6"))
+                            .fontWeight(.semibold)
+                            .frame(maxWidth: .infinity, alignment: .center)
+
                     ) {
-                        TextField("Title", text: $title)
-                            .foregroundColor(Color(hex: "212529"))
+                        Text("Title")
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
                         
-                        TextField("Description", text: $description)
-                            .foregroundColor(Color(hex: "212529"))
+                        TextField("E.g., Car Break-in, Store Robbery", text: $title)
+                            .foregroundColor(.white) // This sets the text color
+                            .accentColor(.white) // This sets the cursor color
+                            .placeholderStyle(color: .white.opacity(0.7)) // Custom modifier for placeholder
+                            .padding(.vertical, 4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                                    .opacity(title.isEmpty ? 0.6 : 1)
+                            )
                         
-                        Picker("Category", selection: $category) {
-                            ForEach(CrimeCategory.allCases, id: \.self) { category in
-                                Text(category.rawValue).tag(category)
+                        Text("Be specific with the incident title")
+                            .font(.caption)
+                            .foregroundColor(Color.white)
+                            .padding(.bottom, 4)
+                        
+                        Text("Description")
+                            .fontWeight(.bold)
+                            .foregroundColor(.white)
+                        
+                        TextField("Provide details about what happened, who was involved, etc.", text: $description, axis: .vertical)
+                            .lineLimit(5...10)
+                            .foregroundColor(.white) // This sets the text color
+                            .accentColor(.white) // This sets the cursor color
+                            .placeholderStyle(color: .white.opacity(0.7)) // Custom modifier for placeholder
+                            .padding(.vertical, 4)
+                            .overlay(
+                                RoundedRectangle(cornerRadius: 4)
+                                    .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                                    .opacity(description.isEmpty ? 0.6 : 1)
+                            )
+                        
+                        Text("Include relevant details like time of day, number of suspects, etc.")
+                            .font(.caption)
+                            .foregroundColor(Color.white)
+                            .padding(.bottom, 8)
+                        
+                        HStack {
+                            VStack(alignment: .leading) {
+                                Text("Category")
+                                    .fontWeight(.bold)
+                                    .foregroundColor(.white)
+                                
+                                Text("Select the most appropriate category")
+                                    .font(.caption)
+                                    .foregroundColor(Color.white)
+                            }
+                            
+                            Spacer()
+                            
+                            Button(action: { showingCategoryInfo.toggle() }) {
+                                Image(systemName: "info.circle")
+                                    .foregroundColor(Color(hex: "64B5F6"))
                             }
                         }
-                        .foregroundColor(Color(hex: "212529"))
                         
-                        Stepper("Severity: \(severity)", value: $severity, in: 1...5)
-                            .foregroundColor(Color(hex: "212529"))
+                        Picker("", selection: $category) {
+                            ForEach(CrimeCategory.allCases, id: \.self) { category in
+                                HStack {
+                                    Text(category.rawValue)
+                                        .foregroundColor(.white)
+                                    Image(systemName: categoryIcon(for: category))
+                                        .foregroundColor(categoryColor(for: category))
+                                }
+                                .tag(category)
+                            }
+                        }
+                        .pickerStyle(.wheel)
+                        .frame(height: 150)
+                        .clipped()
+                        .overlay(
+                            RoundedRectangle(cornerRadius: 8)
+                                .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                        )
+                        
+                        if showingCategoryInfo {
+                            Text(categoryDescriptions[category] ?? "")
+                                .font(.callout)
+                                .padding()
+                                .frame(maxWidth: .infinity, alignment: .leading)
+                                .background(Color(hex: "1A2133"))
+                                .foregroundColor(.white)
+                                .cornerRadius(8)
+                                .overlay(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .stroke(categoryColor(for: category).opacity(0.5), lineWidth: 1)
+                                )
+                                .padding(.vertical, 4)
+                                .transition(.opacity)
+                        }
+                        
+                        VStack(alignment: .leading, spacing: 8) {
+                            Text("Severity Level: \(severity)")
+                                .fontWeight(.medium)
+                                .foregroundColor(.white)
+                            
+                            Text(severityDescription(for: severity))
+                                .font(.caption)
+                                .foregroundColor(Color.gray)
+                            
+                            HStack {
+                                Text("Low")
+                                    .font(.caption)
+                                    .foregroundColor(Color(hex: "28A745"))
+                                
+                                Spacer()
+                                
+                                Text("High")
+                                    .font(.caption)
+                                    .foregroundColor(Color(hex: "DC3545"))
+                            }
+                            
+                            Slider(value: .init(
+                                get: { Double(severity) },
+                                set: { severity = Int($0) }
+                            ), in: 1...5, step: 1)
+                            .accentColor(severityColor(for: severity))
+                        }
                     }
-                    .listRowBackground(Color(hex: "F8F9FA"))
+                    .listRowBackground(Color(hex: "1A2133"))
+                    .listRowSeparator(.hidden)
+                    .padding(.vertical, 4)
                     
                     Section(header: 
                         Text("Location")
-                            .foregroundColor(Color(hex: "495057"))
-                            .fontWeight(.medium)
+                            .foregroundColor(Color(hex: "64B5F6"))
+                            .fontWeight(.semibold)
                     ) {
                         VStack {
                             Button(action: {
                                 showingMap = true
                             }) {
                                 HStack {
-                                    Image(systemName: "map.fill")
-                                        .foregroundColor(Color(hex: "3D8BFD"))
+                                    Image(systemName: "mappin.and.ellipse")
+                                        .font(.system(size: 22))
+                                        .foregroundColor(Color(hex: "64B5F6"))
                                     
-                                    Text(selectedLocation == nil ? "Select Location on Map" : locationName)
-                                        .foregroundColor(selectedLocation == nil ? Color(hex: "6C757D") : Color(hex: "212529"))
+                                    VStack(alignment: .leading, spacing: 4) {
+                                        Text(selectedLocation == nil ? "Select Location on Map" : locationName)
+                                            .foregroundColor(selectedLocation == nil ? Color.gray : .white)
+                                            .fontWeight(selectedLocation == nil ? .regular : .medium)
+                                        
+                                        if selectedLocation == nil {
+                                            Text("Tap to choose incident location")
+                                                .font(.caption)
+                                                .foregroundColor(Color.gray)
+                                        }
+                                    }
                                     
                                     Spacer()
                                     
                                     Image(systemName: "chevron.right")
-                                        .foregroundColor(Color(hex: "6C757D"))
+                                        .foregroundColor(Color.gray)
                                 }
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(hex: "1A2133"))
+                                        .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+                                )
                             }
                             
                             if let location = selectedLocation {
-                                Divider().background(Color(hex: "DEE2E6"))
-                                
-                                HStack {
-                                    Text("Latitude:")
-                                        .foregroundColor(Color(hex: "6C757D"))
+                                VStack(alignment: .leading, spacing: 12) {
+                                    HStack {
+                                        Text("Coordinates:")
+                                            .font(.subheadline)
+                                            .foregroundColor(Color.gray)
+                                        
+                                        Text("\(String(format: "%.6f", location.latitude)), \(String(format: "%.6f", location.longitude))")
+                                            .font(.subheadline)
+                                            .foregroundColor(.white)
+                                    }
                                     
-                                    Text(String(format: "%.6f", location.latitude))
-                                        .foregroundColor(Color(hex: "212529"))
+                                    // Preview map showing the selected location
+                                    Map(coordinateRegion: .constant(MKCoordinateRegion(
+                                        center: location,
+                                        span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
+                                    )), annotationItems: [MapPin(coordinate: location)]) { pin in
+                                        MapMarker(coordinate: pin.coordinate, tint: Color(hex: "DC3545"))
+                                    }
+                                    .frame(height: 150)
+                                    .cornerRadius(12)
+                                    .shadow(color: Color.black.opacity(0.5), radius: 4, x: 0, y: 2)
+                                    .overlay(
+                                        RoundedRectangle(cornerRadius: 12)
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    )
                                 }
-                                
-                                HStack {
-                                    Text("Longitude:")
-                                        .foregroundColor(Color(hex: "6C757D"))
-                                    
-                                    Text(String(format: "%.6f", location.longitude))
-                                        .foregroundColor(Color(hex: "212529"))
-                                }
-                                
-                                // Preview map showing the selected location
-                                Map(coordinateRegion: .constant(MKCoordinateRegion(
-                                    center: location,
-                                    span: MKCoordinateSpan(latitudeDelta: 0.01, longitudeDelta: 0.01)
-                                )), annotationItems: [MapPin(coordinate: location)]) { pin in
-                                    MapMarker(coordinate: pin.coordinate, tint: Color(hex: "DC3545"))
-                                }
-                                .frame(height: 150)
-                                .cornerRadius(12)
-                                .shadow(color: Color(hex: "ADB5BD").opacity(0.5), radius: 4, x: 0, y: 2)
+                                .padding()
+                                .background(
+                                    RoundedRectangle(cornerRadius: 8)
+                                        .fill(Color(hex: "1A2133"))
+                                )
                                 .padding(.top, 8)
                             }
                         }
                     }
-                    .listRowBackground(Color(hex: "F8F9FA"))
+                    .listRowBackground(Color(hex: "1A2133"))
+                    .listRowSeparator(.hidden)
+                    .padding(.vertical, 4)
                     
                     Section {
                         Button(action: addCrime) {
-                            Text("Submit Report")
-                                .font(.headline)
-                                .foregroundColor(.white)
-                                .frame(maxWidth: .infinity)
-                                .padding()
-                                .background(
-                                    LinearGradient(
-                                        gradient: Gradient(colors: [
-                                            Color(hex: "DC3545"),
-                                            Color(hex: "EB6A5C")
-                                        ]),
-                                        startPoint: .leading,
-                                        endPoint: .trailing
-                                    )
+                            HStack {
+                                Spacer()
+                                Image(systemName: "exclamationmark.triangle")
+                                    .font(.system(size: 18, weight: .bold))
+                                Text("SUBMIT CRIME REPORT")
+                                    .font(.headline)
+                                Spacer()
+                            }
+                            .foregroundColor(.white)
+                            .padding()
+                            .background(
+                                LinearGradient(
+                                    gradient: Gradient(colors: [
+                                        Color(hex: "DC3545"),
+                                        Color(hex: "C82333")
+                                    ]),
+                                    startPoint: .leading,
+                                    endPoint: .trailing
                                 )
-                                .cornerRadius(10)
-                                .shadow(color: Color(hex: "DC3545").opacity(0.3), radius: 5, x: 0, y: 3)
+                            )
+                            .cornerRadius(10)
+                            .shadow(color: Color(hex: "DC3545").opacity(0.4), radius: 5, x: 0, y: 3)
                         }
                         .disabled(title.isEmpty || description.isEmpty || selectedLocation == nil)
                         .opacity(title.isEmpty || description.isEmpty || selectedLocation == nil ? 0.5 : 1)
@@ -153,11 +299,11 @@ struct AddCrimeFormView: View {
             }
             .navigationTitle("Report a Crime")
             .navigationBarTitleDisplayMode(.inline)
-            .toolbarColorScheme(.light, for: .navigationBar)
-            .toolbarBackground(Color(hex: "F8F9FA"), for: .navigationBar)
+            .toolbarColorScheme(.dark, for: .navigationBar)
+            .toolbarBackground(Color(hex: "1A2133"), for: .navigationBar)
             .toolbarBackground(.visible, for: .navigationBar)
             .sheet(isPresented: $showingMap) {
-                LocationPickerView(
+                DarkLocationPickerView(
                     region: $region,
                     selectedLocation: $selectedLocation,
                     locationName: $locationName,
@@ -169,7 +315,7 @@ struct AddCrimeFormView: View {
                     Button("Cancel") {
                         dismiss()
                     }
-                    .foregroundColor(Color(hex: "3D8BFD"))
+                    .foregroundColor(Color(hex: "64B5F6"))
                 }
             }
         }
@@ -202,6 +348,51 @@ struct AddCrimeFormView: View {
         viewModel.addCrime(newCrime)
         dismiss()
     }
+    
+    // Helper functions for category visuals
+    private func categoryIcon(for category: CrimeCategory) -> String {
+        switch category {
+        case .theft: return "bag.fill.badge.minus"
+        case .assault: return "person.fill.questionmark"
+        case .vandalism: return "hammer.fill"
+        case .other: return "questionmark.circle.fill"
+        default: return "questionmark.circle.fill" // Add this default case
+        }
+    }
+    
+    private func categoryColor(for category: CrimeCategory) -> Color {
+        switch category {
+        case .theft: return Color(hex: "FFC107")
+        case .assault: return Color(hex: "DC3545")
+        case .vandalism: return Color(hex: "6C757D")
+        case .other: return Color(hex: "6C757D")
+        default: return Color(hex: "6C757D") // Add this default case
+        }
+    }
+    
+    // Helper function for severity descriptions
+    private func severityDescription(for level: Int) -> String {
+        switch level {
+        case 1: return "Minor incident with little to no threat"
+        case 2: return "Low-level incident with minimal threat"
+        case 3: return "Moderate incident with some potential risk"
+        case 4: return "Serious incident with significant risk"
+        case 5: return "Critical incident requiring immediate action"
+        default: return ""
+        }
+    }
+    
+    // Helper function for severity colors
+    private func severityColor(for level: Int) -> Color {
+        switch level {
+        case 1: return Color(hex: "28A745")
+        case 2: return Color(hex: "5CB85C")
+        case 3: return Color(hex: "FFC107")
+        case 4: return Color(hex: "F0AD4E")
+        case 5: return Color(hex: "DC3545")
+        default: return Color(hex: "6C757D")
+        }
+    }
 }
 
 // Helper struct for map pins
@@ -210,8 +401,8 @@ struct MapPin: Identifiable {
     let coordinate: CLLocationCoordinate2D
 }
 
-// Location Picker View with matching light theme
-struct LocationPickerView: View {
+// Dark-themed Location Picker View
+struct DarkLocationPickerView: View {
     @Binding var region: MKCoordinateRegion
     @Binding var selectedLocation: CLLocationCoordinate2D?
     @Binding var locationName: String
@@ -225,11 +416,11 @@ struct LocationPickerView: View {
     
     var body: some View {
         ZStack {
-            // Light background
+            // Dark background to match theme
             LinearGradient(
                 gradient: Gradient(colors: [
-                    Color(hex: "F8F9FA"),
-                    Color(hex: "E9ECEF")
+                    Color(hex: "141E30"),
+                    Color(hex: "243B55")
                 ]),
                 startPoint: .top,
                 endPoint: .bottom
@@ -242,13 +433,13 @@ struct LocationPickerView: View {
                     Button("Cancel") {
                         isPresented = false
                     }
-                    .foregroundColor(Color(hex: "3D8BFD"))
+                    .foregroundColor(Color(hex: "64B5F6"))
                     
                     Spacer()
                     
                     Text("Select Location")
                         .font(.headline)
-                        .foregroundColor(Color(hex: "212529"))
+                        .foregroundColor(.white)
                     
                     Spacer()
                     
@@ -287,19 +478,19 @@ struct LocationPickerView: View {
                             isPresented = false
                         }
                     }
-                    .foregroundColor(Color(hex: "3D8BFD"))
+                    .foregroundColor(Color(hex: "64B5F6"))
                 }
                 .padding()
-                .background(Color(hex: "F8F9FA"))
-                .shadow(color: Color(hex: "ADB5BD").opacity(0.3), radius: 2, x: 0, y: 1)
+                .background(Color(hex: "1A2133"))
+                .shadow(color: Color.black.opacity(0.3), radius: 2, x: 0, y: 1)
                 
                 // Search bar
                 HStack {
                     Image(systemName: "magnifyingglass")
-                        .foregroundColor(Color(hex: "3D8BFD"))
+                        .foregroundColor(Color(hex: "64B5F6"))
                     
                     TextField("Search for a location", text: $searchText)
-                        .foregroundColor(Color(hex: "212529"))
+                        .foregroundColor(.white)
                         .onSubmit {
                             searchForLocation()
                         }
@@ -310,18 +501,22 @@ struct LocationPickerView: View {
                             searchResults = []
                         }) {
                             Image(systemName: "xmark.circle.fill")
-                                .foregroundColor(Color(hex: "6C757D"))
+                                .foregroundColor(Color.gray)
                         }
                     }
                 }
                 .padding(12)
-                .background(Color.white)
+                .background(Color(hex: "1A2133"))
                 .cornerRadius(10)
-                .shadow(color: Color(hex: "ADB5BD").opacity(0.2), radius: 3, x: 0, y: 1)
+                .overlay(
+                    RoundedRectangle(cornerRadius: 10)
+                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                )
+                .shadow(color: Color.black.opacity(0.2), radius: 3, x: 0, y: 1)
                 .padding(.horizontal)
                 .padding(.vertical, 8)
                 
-                // Search results
+                // Search results with dark theme
                 if !searchResults.isEmpty {
                     List {
                         ForEach(searchResults, id: \.self) { mapItem in
@@ -342,23 +537,23 @@ struct LocationPickerView: View {
                             }) {
                                 VStack(alignment: .leading) {
                                     Text(mapItem.name ?? "Unknown Location")
-                                        .foregroundColor(Color(hex: "212529"))
+                                        .foregroundColor(.white)
                                     
                                     if let address = mapItem.placemark.thoroughfare {
                                         Text(address)
                                             .font(.caption)
-                                            .foregroundColor(Color(hex: "6C757D"))
+                                            .foregroundColor(Color.gray)
                                     }
                                 }
                             }
-                            .listRowBackground(Color.white)
+                            .listRowBackground(Color(hex: "1A2133"))
                         }
                     }
-                    .listStyle(.plain)
                     .scrollContentBackground(.hidden)
+                    .background(Color(hex: "1A2133"))
                 }
                 
-                // Map view
+                // Map view remains largely the same
                 Map(coordinateRegion: $region, interactionModes: .all, showsUserLocation: true, annotationItems: selectedLocation.map { [MapPin(coordinate: $0)] } ?? []) { pin in
                     MapAnnotation(coordinate: pin.coordinate) {
                         VStack {
@@ -427,20 +622,25 @@ struct LocationPickerView: View {
                     }
                 }
                 
-                // Helper text
+                // Helper text with dark theme
                 Text(selectedLocation == nil ? "Tap on the map to select a location" : "Location selected")
                     .font(.caption)
-                    .foregroundColor(Color(hex: "495057"))
+                    .foregroundColor(.white)
                     .padding()
-                    .background(Color.white.opacity(0.9))
+                    .background(Color(hex: "1A2133").opacity(0.9))
                     .cornerRadius(10)
-                    .shadow(color: Color(hex: "ADB5BD").opacity(0.3), radius: 3, x: 0, y: 2)
+                    .overlay(
+                        RoundedRectangle(cornerRadius: 10)
+                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                    )
+                    .shadow(color: Color.black.opacity(0.3), radius: 3, x: 0, y: 2)
                     .padding(.bottom, 8)
             }
         }
     }
     
     private func searchForLocation() {
+        // Search functionality remains unchanged
         guard !searchText.isEmpty else {
             searchResults = []
             return
@@ -458,6 +658,27 @@ struct LocationPickerView: View {
             
             searchResults = response.mapItems
         }
+    }
+}
+
+// Add this extension at the bottom of your file
+extension View {
+    func placeholderStyle(color: Color) -> some View {
+        self.modifier(PlaceholderStyleModifier(color: color))
+    }
+}
+
+struct PlaceholderStyleModifier: ViewModifier {
+    var color: Color
+    
+    func body(content: Content) -> some View {
+        content
+            .onAppear {
+                UITextField.appearance().attributedPlaceholder = NSAttributedString(
+                    string: " ", // This is a hack to make it work
+                    attributes: [NSAttributedString.Key.foregroundColor: UIColor(color)]
+                )
+            }
     }
 }
 

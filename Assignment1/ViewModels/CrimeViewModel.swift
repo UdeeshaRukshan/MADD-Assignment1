@@ -130,6 +130,10 @@ class CrimeViewModel: ObservableObject {
             // No need to manually append to array since we're using a snapshot listener
             self?.triggerNotification(for: crime)
         }
+         if crime.severity >= 2{
+        let message = "High priority crime reported: \(crime.title)"
+        showNotification(message: message)
+    }
     }
     
     func selectActivity(_ activity: CriminalActivity) {
@@ -168,7 +172,23 @@ class CrimeViewModel: ObservableObject {
         selectedActivity = nil
         selectedLocation = nil
     }
+    // Add these methods to your existing CrimeViewModel class
+
+// Inside your CrimeViewModel class:
+func showNotification(message: String, sendSystemNotification: Bool = true) {
+    // Show in-app notification
+    self.notificationMessage = message
     
+    // Also send system notification if requested
+    if sendSystemNotification {
+        NotificationService.shared.scheduleNotification(
+            title: "Safety Alert",
+            body: message
+        )
+    }
+}
+
+
     private func triggerNotification(for crime: CriminalActivity) {
         notificationMessage = "New Crime Reported: \(crime.title)"
         

@@ -424,8 +424,6 @@ extension CrimeCategory {
         case .theft: return "bag.fill"
         case .assault: return "person.fill.xmark"
         case .vandalism: return "hammer.fill"
-        case .drugRelated: return "pills.fill"
-        case .fraud: return "creditcard.fill"
         case .other: return "exclamationmark.circle.fill"
         }
     }
@@ -435,8 +433,6 @@ extension CrimeCategory {
         case .theft: return Color(hex: "FF9800")
         case .assault: return Color(hex: "F44336")
         case .vandalism: return Color(hex: "9C27B0")
-        case .drugRelated: return Color(hex: "4CAF50")
-        case .fraud: return Color(hex: "2196F3")
         case .other: return Color(hex: "607D8B")
         }
     }

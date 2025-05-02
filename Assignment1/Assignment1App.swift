@@ -15,11 +15,16 @@ struct Assignment1App: App {
     
     // Create a shared instance of CrimeViewModel
     @StateObject private var crimeViewModel = CrimeViewModel()
+    @StateObject private var notificationService = NotificationService.shared
     
     var body: some Scene {
         WindowGroup {
             InitialScreen()
                 .environmentObject(crimeViewModel) // Inject CrimeViewModel into the environment
+        .onAppear {
+                    // Request notification permissions when app launches
+                    NotificationService.shared.requestPermission()
+                }
         }
     }
 }

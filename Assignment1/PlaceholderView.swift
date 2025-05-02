@@ -13,6 +13,8 @@ struct PlaceholderView: View {
     @State private var isShowingAddCrime = false
     @State private var selectedTab = 0
     @State private var searchText = ""
+    // Add namespace directly in the view
+    @Namespace private var animation
     
     // Add this computed property for filtered crimes
     private var filteredCrimes: [CriminalActivity] {
@@ -132,7 +134,7 @@ struct PlaceholderView: View {
                                         Rectangle()
                                             .fill(Color(hex: "64B5F6"))
                                             .frame(height: 3)
-                                            .matchedGeometryEffect(id: "tab", in: NamespaceWrapper.namespace)
+                                            .matchedGeometryEffect(id: "tab", in: animation) // Use local namespace
                                     } else {
                                         Rectangle()
                                             .fill(Color.clear)
@@ -391,11 +393,6 @@ struct CrimeCard: View {
 }
 
 // Helpers for the design
-
-// Namespace for animations
-struct NamespaceWrapper {
-    @Namespace static var namespace
-}
 
 // Hex color extension
 extension Color {
