@@ -7,6 +7,7 @@
 
 import SwiftUI
 import WebKit
+import AVKit
 
 // Model for CCTV Camera
 struct CCTVCamera: Identifiable {
@@ -125,7 +126,7 @@ struct CameraCell: View {
                 ZStack {
                     Circle()
                         .fill(Color.white.opacity(0.1))
-                        .frame(width: 60, height: 60)
+                        .frame(width: 40, height: 60)
                     
                     Image(systemName: camera.thumbnailName)
                         .resizable()
@@ -165,8 +166,10 @@ struct CameraCell: View {
 struct CameraPreviewView: View {
     let camera: CCTVCamera
     @Environment(\.dismiss) private var dismiss
-    // YouTube video ID from the URL you provided
-    let videoID = "ms-Q3t5IqNM"
+    @State private var isLoading = true
+    @State private var loadError = false
+    // Add refreshID to trigger new random video each time
+    @State private var refreshID = UUID()
     
     var body: some View {
         ZStack {
@@ -202,11 +205,11 @@ struct CameraPreviewView: View {
                 }
                 .padding()
                 
-                // Camera feed (with YouTube video)
+                // Camera feed - Replace CCTVVideoPlayerView with CCTVPlayerView
                 ZStack {
                     if camera.isOnline {
-                        // YouTube video feed
-                        YouTubePlayerView(videoID: videoID)
+                        // Use the CCTVPlayerView with random video selection
+                        CCTVPlayerView(refreshID: $refreshID)
                             .frame(height: 300)
                             .cornerRadius(16)
                             .overlay(
@@ -227,7 +230,7 @@ struct CameraPreviewView: View {
                                         
                                         Spacer()
                                         
-                                        Text("Security Feed • Indoor")
+                                        Text("Security Feed • \(camera.location)")
                                             .foregroundColor(.white)
                                             .font(.caption)
                                     }
@@ -235,6 +238,15 @@ struct CameraPreviewView: View {
                                     .background(Color.black.opacity(0.5))
                                 }
                             )
+                            .onAppear {
+                                // Generate a new random video each time the view appears
+                                refreshID = UUID()
+                                
+                                // Hide loading indicator after a brief delay
+                                DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
+                                    isLoading = false
+                                }
+                            }
                     } else {
                         // Offline message
                         Rectangle()
@@ -259,6 +271,55 @@ struct CameraPreviewView: View {
                                 }
                             )
                     }
+                    
+                    // Show loading indicator
+                    if isLoading && camera.isOnline {
+                        ZStack {
+                            Color.black.opacity(0.7)
+                                .cornerRadius(16)
+                            
+                            VStack {
+                                ProgressView()
+                                    .progressViewStyle(CircularProgressViewStyle(tint: Color.white))
+                                    .scaleEffect(1.5)
+                                
+                                Text("Loading Feed...")
+                                    .foregroundColor(.white)
+                                    .padding(.top, 20)
+                            }
+                        }
+                    }
+                    
+                    // Show error message if needed
+                    if loadError && camera.isOnline {
+                        ZStack {
+                            Color.black.opacity(0.7)
+                                .cornerRadius(16)
+                            
+                            VStack {
+                                Image(systemName: "exclamationmark.triangle.fill")
+                                    .resizable()
+                                    .aspectRatio(contentMode: .fit)
+                                    .frame(width: 40, height: 30)
+                                    .foregroundColor(Color(hex: "FF416C"))
+                                
+                                Text("Failed to load camera feed")
+                                    .foregroundColor(.white)
+                                    .padding(.top, 10)
+                                
+                                Button("Retry") {
+                                    isLoading = true
+                                    loadError = false
+                                    // Simulate retry
+                                    DispatchQueue.main.asyncAfter(deadline: .now() + 2) {
+                                        isLoading = false
+                                    }
+                                }
+                                .foregroundColor(Color(hex: "64B5F6"))
+                                .padding(.top, 10)
+                            }
+                        }
+                    }
                 }
                 .padding(.horizontal)
                 
@@ -278,13 +339,20 @@ struct CameraPreviewView: View {
                 )
                 .padding(.horizontal)
                 
-                // Control buttons
-                HStack(spacing: 20) {
-                    ControlButton(title: "Record", icon: "record.circle")
-                    ControlButton(title: "Screenshot", icon: "camera")
-                    ControlButton(title: "Settings", icon: "gear")
+                // Add a new "Change Feed" button
+                Button(action: {
+                    // Generate a new UUID to trigger the refresh
+                    refreshID = UUID()
+                }) {
+                    Label("Switch Feed", systemImage: "arrow.triangle.2.circlepath")
+                        .foregroundColor(.white)
+                        .padding(.vertical, 8)
+                        .padding(.horizontal, 16)
+                        .background(Color(hex: "64B5F6").opacity(0.6))
+                        .cornerRadius(8)
                 }
-                .padding()
+                .padding(.top, 12)
+                .opacity(camera.isOnline ? 1.0 : 0.0) // Only show when camera is online
                 
                 Spacer()
             }
@@ -338,6 +406,122 @@ struct ControlButton: View {
             RoundedRectangle(cornerRadius: 12)
                 .stroke(Color.white.opacity(0.1), lineWidth: 1)
         )
+    }
+}
+
+// Add this fixed CCTVVideoPlayerView directly to this file for better integration
+struct CCTVVideoPlayerView: View {
+    @State private var player = AVPlayer()
+    @State private var showControls = false
+    
+    var body: some View {
+        ZStack {
+            VideoPlayer(player: player)
+                .aspectRatio(16/9, contentMode: .fit)
+                .onAppear {
+                    // First try to load from bundle
+                    if let videoURL = Bundle.main.url(forResource: "cctv", withExtension: "mp4") {
+                        setupPlayer(with: videoURL)
+                    } else {
+                        // Try to load from Assets catalog in a different way
+                        loadVideoFromAssets()
+                    }
+                }
+                .onDisappear {
+                    // Clean up when the view disappears
+                    player.pause()
+                    NotificationCenter.default.removeObserver(self)
+                }
+            
+            // Video controls that appear on tap
+            if showControls {
+                HStack(spacing: 40) {
+                    Button(action: {
+                        player.seek(to: CMTime(seconds: max(0, player.currentTime().seconds - 10), preferredTimescale: 600))
+                    }) {
+                        Image(systemName: "gobackward.10")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white)
+                    }
+                    
+                    Button(action: {
+                        if player.timeControlStatus == .playing {
+                            player.pause()
+                        } else {
+                            player.play()
+                        }
+                    }) {
+                        Image(systemName: player.timeControlStatus == .playing ? "pause.circle.fill" : "play.circle.fill")
+                            .font(.system(size: 50))
+                            .foregroundColor(.white)
+                    }
+                    
+                    Button(action: {
+                        player.seek(to: CMTime(seconds: player.currentTime().seconds + 10, preferredTimescale: 600))
+                    }) {
+                        Image(systemName: "goforward.10")
+                            .font(.system(size: 30))
+                            .foregroundColor(.white)
+                    }
+                }
+                .padding()
+                .background(Color.black.opacity(0.4))
+                .cornerRadius(10)
+            }
+        }
+        .contentShape(Rectangle())
+        .onTapGesture {
+            // Show controls when tapped
+            withAnimation {
+                showControls = true
+            }
+            
+            // Auto-hide controls after 3 seconds
+            DispatchQueue.main.asyncAfter(deadline: .now() + 3) {
+                withAnimation {
+                    showControls = false
+                }
+            }
+        }
+    }
+    
+    private func setupPlayer(with url: URL) {
+        // Set up the player with the video URL
+        player = AVPlayer(url: url)
+        
+        // Configure playback settings
+        player.automaticallyWaitsToMinimizeStalling = true
+        player.volume = 0.5  // 50% volume by default
+        player.play()
+        
+        // Add observer for when playback ends
+        NotificationCenter.default.addObserver(
+            forName: .AVPlayerItemDidPlayToEndTime,
+            object: player.currentItem,
+            queue: .main
+        ) { _ in
+            // Loop the video
+            player.seek(to: .zero)
+            player.play()
+        }
+    }
+    
+    private func loadVideoFromAssets() {
+        // Alternative method to load video from asset catalog
+        if let dataAsset = NSDataAsset(name: "cctv") {
+            // Create a temporary file to play the video from
+            let temporaryDirectoryURL = FileManager.default.temporaryDirectory
+            let temporaryFileURL = temporaryDirectoryURL.appendingPathComponent("temp_cctv.mp4")
+            
+            do {
+                try dataAsset.data.write(to: temporaryFileURL)
+                setupPlayer(with: temporaryFileURL)
+            } catch {
+                print("Error writing video data to temporary file: \(error)")
+            }
+        } else {
+            print("Could not load video data from assets")
+        }
     }
 }
 

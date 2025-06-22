@@ -36,7 +36,7 @@ struct PlaceholderView: View {
     var body: some View {
         NavigationView {
             ZStack {
-                // Modern gradient background
+                // Keep your existing background gradient
                 LinearGradient(
                     gradient: Gradient(colors: [
                         Color(hex: "141E30"),
@@ -49,7 +49,7 @@ struct PlaceholderView: View {
                 
                 // Content
                 VStack(spacing: 0) {
-                    // Custom header
+                    // Custom header - Modify for iPad compatibility
                     HStack {
                         VStack(alignment: .leading, spacing: 4) {
                             Text("CRIME MAP")
@@ -64,30 +64,38 @@ struct PlaceholderView: View {
                         
                         Spacer()
                         
-                        NavigationLink(destination: NotificationContentView(viewModel: viewModel)) {
-                            Image(systemName: "bell.fill")
-                                .font(.system(size: 20))
-                                .foregroundColor(.white)
-                                .padding(12)
-                                .background(
-                                    Circle()
-                                        .fill(Color.white.opacity(0.15))
-                                )
-                                .overlay(
-                                    Circle()
-                                        .stroke(Color.white.opacity(0.2), lineWidth: 1)
-                                )
-                                // Add notification badge if there are active notifications
-                                .overlay(
-                                    Group {
-                                        if viewModel.notificationMessage != nil {
-                                            Circle()
-                                                .fill(Color.red)
-                                                .frame(width: 12, height: 12)
-                                                .offset(x: 10, y: -10)
+                        // Wrap this in a HStack for better spacing on iPad
+                        HStack(spacing: 16) {
+                            // Navigation link with explicit styling for iPad
+                            NavigationLink(destination: NotificationContentView(viewModel: viewModel)) {
+                                Image(systemName: "bell.fill")
+                                    .font(.system(size: 20))
+                                    .foregroundColor(.white)
+                                    .padding(12)
+                                    .background(
+                                        Circle()
+                                            .fill(Color.white.opacity(0.15))
+                                    )
+                                    .overlay(
+                                        Circle()
+                                            .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                    )
+                                    // Add notification badge if there are active notifications
+                                    .overlay(
+                                        Group {
+                                            if viewModel.notificationMessage != nil {
+                                                Circle()
+                                                    .fill(Color.red)
+                                                    .frame(width: 12, height: 12)
+                                                    .offset(x: 10, y: -10)
+                                            }
                                         }
-                                    }
-                                )
+                                    )
+                                    // Add frame with minimum size for better touch target on iPad
+                                    .frame(minWidth: 44, minHeight: 44)
+                            }
+                            // Explicitly set navigationLinkStyle for iPad compatibility
+                            .buttonStyle(PlainButtonStyle())
                         }
                     }
                     .padding(.horizontal)
@@ -305,11 +313,37 @@ struct PlaceholderView: View {
                     .padding(.bottom, 20)
                 }
             }
+            // Fix for iPad navigation
+            .navigationViewStyle(StackNavigationViewStyle())
             .navigationBarHidden(true)
             .sheet(isPresented: $isShowingAddCrime) {
                 AddCrimeFormView()
+                    .environmentObject(viewModel)
             }
         }
+        // Add iPad-specific modifiers
+        .navigationViewStyle(StackNavigationViewStyle())
+        // Prevent sidebar from appearing in iPad split view
+        .onAppear {
+            setupIPadNavigation()
+        }
+    }
+    
+    // Add this helper function to your view
+    private func setupIPadNavigation() {
+        #if targetEnvironment(macCatalyst) || os(iOS)
+        if UIDevice.current.userInterfaceIdiom == .pad {
+            UINavigationBar.appearance().isTranslucent = false
+            UINavigationBar.appearance().backgroundColor = UIColor(named: "1A2133")
+            
+            // Disable split view controller's column
+            if let windowScene = UIApplication.shared.connectedScenes.first as? UIWindowScene,
+               let splitViewController = windowScene.windows.first?.rootViewController as? UISplitViewController {
+                splitViewController.preferredDisplayMode = .oneBesideSecondary
+                splitViewController.presentsWithGesture = false
+            }
+        }
+        #endif
     }
 }
 
