@@ -47,9 +47,22 @@
 		45E911DD2D75E5440035F85D /* Assignment1UITests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = Assignment1UITests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 /* End PBXFileReference section */
 
+/* Begin PBXFileSystemSynchronizedBuildFileExceptionSet section */
+		4540331E2E0945F200C692C8 /* Exceptions for "Assignment1" folder in "Assignment1" target */ = {
+			isa = PBXFileSystemSynchronizedBuildFileExceptionSet;
+			membershipExceptions = (
+				Info.plist,
+			);
+			target = 45E911C22D75E5420035F85D /* Assignment1 */;
+		};
+/* End PBXFileSystemSynchronizedBuildFileExceptionSet section */
+
 /* Begin PBXFileSystemSynchronizedRootGroup section */
 		45E911C52D75E5420035F85D /* Assignment1 */ = {
 			isa = PBXFileSystemSynchronizedRootGroup;
+			exceptions = (
+				4540331E2E0945F200C692C8 /* Exceptions for "Assignment1" folder in "Assignment1" target */,
+			);
 			path = Assignment1;
 			sourceTree = "<group>";
 		};

@@ -168,8 +168,12 @@ struct CameraPreviewView: View {
     @Environment(\.dismiss) private var dismiss
     @State private var isLoading = true
     @State private var loadError = false
-    // Add refreshID to trigger new random video each time
     @State private var refreshID = UUID()
+    
+    // Add CoreML analysis service
+    @StateObject private var analysisService = CCTVAnalysisService()
+    @State private var showAnalysisOverlay = false
+    @State private var currentFrame: UIImage?
     
     var body: some View {
         ZStack {
@@ -205,11 +209,11 @@ struct CameraPreviewView: View {
                 }
                 .padding()
                 
-                // Camera feed - Replace CCTVVideoPlayerView with CCTVPlayerView
+                // Camera feed with analysis overlay
                 ZStack {
                     if camera.isOnline {
-                        // Use the CCTVPlayerView with random video selection
-                        CCTVPlayerView(refreshID: $refreshID)
+                        // Existing camera view code
+                        CCTVPlayerView(refreshID: $refreshID, currentFrame: $currentFrame)
                             .frame(height: 300)
                             .cornerRadius(16)
                             .overlay(
@@ -218,7 +222,35 @@ struct CameraPreviewView: View {
                             )
                             .overlay(
                                 VStack {
+                                    // If ML detection is active, show detection status
+                                    if showAnalysisOverlay {
+                                        HStack {
+                                            Circle()
+                                                .fill(analysisService.isPersonDetected ? Color.red : Color.green)
+                                                .frame(width: 10, height: 10)
+                                            
+                                            Text(analysisService.isPersonDetected ? "Person Detected" : "No Suspicious Activity")
+                                                .font(.caption)
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 8)
+                                                .padding(.vertical, 4)
+                                                .background(Color.black.opacity(0.6))
+                                                .cornerRadius(4)
+                                            
+                                            Spacer()
+                                            
+                                            if analysisService.isAnalyzing {
+                                                ProgressView()
+                                                    .progressViewStyle(CircularProgressViewStyle(tint: .white))
+                                                    .scaleEffect(0.7)
+                                            }
+                                        }
+                                        .padding(8)
+                                        .background(Color.black.opacity(0.6))
+                                    }
+                                    
                                     Spacer()
+                                    
                                     HStack {
                                         Text("LIVE")
                                             .foregroundColor(.white)
@@ -239,14 +271,45 @@ struct CameraPreviewView: View {
                                 }
                             )
                             .onAppear {
-                                // Generate a new random video each time the view appears
                                 refreshID = UUID()
                                 
-                                // Hide loading indicator after a brief delay
                                 DispatchQueue.main.asyncAfter(deadline: .now() + 1.5) {
                                     isLoading = false
                                 }
                             }
+                        
+                        // ML detection boxes overlay when detection is active
+                        if showAnalysisOverlay && !analysisService.detectedObjects.isEmpty {
+                            ZStack {
+                                Color.clear
+                                
+                                ForEach(analysisService.detectedObjects) { object in
+                                    Rectangle()
+                                        .stroke(object.label.lowercased() == "person" ? Color.red : Color.green, lineWidth: 2)
+                                        .frame(
+                                            width: 300 * object.boundingBox.width,
+                                            height: 300 * object.boundingBox.height
+                                        )
+                                        .position(
+                                            x: 300 * (object.boundingBox.minX + object.boundingBox.width / 2),
+                                            y: 300 * (1 - object.boundingBox.minY - object.boundingBox.height / 2)
+                                        )
+                                        .overlay(
+                                            Text("\(object.label) \(Int(object.confidence * 100))%")
+                                                .font(.system(size: 10))
+                                                .foregroundColor(.white)
+                                                .padding(.horizontal, 4)
+                                                .padding(.vertical, 2)
+                                                .background(Color.black.opacity(0.7))
+                                                .cornerRadius(4)
+                                                .offset(y: -(300 * object.boundingBox.height / 2) - 10),
+                                            alignment: .top
+                                        )
+                                }
+                            }
+                            .frame(height: 300)
+                            .cornerRadius(16)
+                        }
                     } else {
                         // Offline message
                         Rectangle()
@@ -354,8 +417,30 @@ struct CameraPreviewView: View {
                 .padding(.top, 12)
                 .opacity(camera.isOnline ? 1.0 : 0.0) // Only show when camera is online
                 
+                // Add ML analysis toggle
+                if camera.isOnline {
+                    Toggle("Enable Suspicious Activity Detection", isOn: $showAnalysisOverlay)
+                        .foregroundColor(.white)
+                        .toggleStyle(SwitchToggleStyle(tint: Color(hex: "64B5F6")))
+                        .onChange(of: showAnalysisOverlay) { newValue in
+                            if newValue {
+                                // Start ML analysis
+                                analysisService.startContinuousAnalysis {
+                                    return currentFrame
+                                }
+                            } else {
+                                // Stop ML analysis
+                                analysisService.stopContinuousAnalysis()
+                            }
+                        }
+                }
+                
                 Spacer()
             }
+        }
+        .onDisappear {
+            // Stop analysis when view disappears
+            analysisService.stopContinuousAnalysis()
         }
     }
 }
@@ -381,38 +466,12 @@ struct DetailRow: View {
     }
 }
 
-// Helper view for control buttons - updated for dark theme
-struct ControlButton: View {
-    let title: String
-    let icon: String
-    
-    var body: some View {
-        VStack(spacing: 8) {
-            Image(systemName: icon)
-                .resizable()
-                .aspectRatio(contentMode: .fit)
-                .frame(width: 24, height: 24)
-                .foregroundColor(Color(hex: "64B5F6"))
-            
-            Text(title)
-                .font(.caption)
-                .foregroundColor(.white)
-        }
-        .frame(maxWidth: .infinity)
-        .padding(.vertical, 12)
-        .background(Color(hex: "1A2133"))
-        .cornerRadius(12)
-        .overlay(
-            RoundedRectangle(cornerRadius: 12)
-                .stroke(Color.white.opacity(0.1), lineWidth: 1)
-        )
-    }
-}
-
-// Add this fixed CCTVVideoPlayerView directly to this file for better integration
-struct CCTVVideoPlayerView: View {
+// Modified CCTVPlayerView to capture current frame for analysis
+struct CCTVPlayerView: View {
     @State private var player = AVPlayer()
     @State private var showControls = false
+    @Binding var refreshID: UUID
+    @Binding var currentFrame: UIImage?
     
     var body: some View {
         ZStack {
@@ -483,6 +542,10 @@ struct CCTVVideoPlayerView: View {
                 }
             }
         }
+        .onAppear {
+            // Capture frames at intervals for ML analysis
+            startFrameCapture()
+        }
     }
     
     private func setupPlayer(with url: URL) {
@@ -523,9 +586,16 @@ struct CCTVVideoPlayerView: View {
             print("Could not load video data from assets")
         }
     }
-}
-
-
-#Preview {
-    CCTVListView()
+    
+    // Add method to capture frames from video
+    private func startFrameCapture() {
+        // This is a simplified example - in a real app, you'd use AVCaptureSession or
+        // extract frames from the actual video playback
+        Timer.scheduledTimer(withTimeInterval: 1.0, repeats: true) { _ in
+            // Simulate frame capture with a placeholder image
+            // In a real implementation, you'd extract the actual frame from the video
+            let mockFrame = UIImage(systemName: "video.fill")?.withTintColor(.white)
+            currentFrame = mockFrame
+        }
+    }
 }

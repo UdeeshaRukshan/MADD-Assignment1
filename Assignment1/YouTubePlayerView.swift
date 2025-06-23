@@ -169,8 +169,8 @@ struct DocumentsVideoPlayerView: View {
     }
 }
 
-// CCTV Video Player View for playing local video with fallback to YouTube
-struct CCTVPlayerView: View {
+// Rename this to avoid conflict
+struct YouTubeCCTVPlayerView: View {
     @State private var player = AVPlayer()
     @State private var isShowingYouTubeVideo = false
     @State private var loadError = false
@@ -327,10 +327,12 @@ struct CCTVPlayerView: View {
 struct CCTVContainerView: View {
     // This UUID will be changed whenever we want a new random video
     @State private var refreshID = UUID()
+    @State private var currentFrame: UIImage?
     
     var body: some View {
         VStack {
-            CCTVPlayerView(refreshID: $refreshID)
+            // Use the renamed view here
+            YouTubeCCTVPlayerView(refreshID: $refreshID)
                 .frame(height: 240)
                 .cornerRadius(12)
                 .overlay(

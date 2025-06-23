@@ -7,9 +7,9 @@ struct SOSOverlayView: View {
     @StateObject private var viewModel = SOSViewModel()
     @State private var pinInput = ""
     @FocusState private var isPinFieldFocused: Bool
-    
+
     let timerInterval: TimeInterval = 5
-    
+
     var body: some View {
         ZStack {
             // Semi-transparent background
@@ -85,6 +85,17 @@ struct SOSOverlayView: View {
                             .background(Color.white.opacity(0.1))
                             .cornerRadius(8)
                             .opacity(0.01) // Hidden but functional
+                        
+                        // Heart rate display
+                        if let bpm = viewModel.latestHeartRate {
+                            HStack {
+                                Image(systemName: "heart.fill")
+                                    .foregroundColor(.red)
+                                Text("Heart Rate: \(Int(bpm)) BPM")
+                                    .foregroundColor(.white)
+                                    .font(.headline)
+                            }
+                        }
                     }
                     .onAppear {
                         // Focus the PIN field immediately
@@ -108,6 +119,10 @@ struct SOSOverlayView: View {
                                 SOSActionRow(icon: "record.circle", text: "Recording in progress...", isActive: true)
                             } else {
                                 SOSActionRow(icon: "record.circle", text: "Evidence recording started")
+                            }
+                            // Heart rate evidence
+                            if let bpm = viewModel.latestHeartRate {
+                                SOSActionRow(icon: "heart.fill", text: "Heart Rate Evidence: \(Int(bpm)) BPM")
                             }
                         }
                         .padding()

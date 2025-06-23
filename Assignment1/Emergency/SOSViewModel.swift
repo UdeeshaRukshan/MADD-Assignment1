@@ -3,6 +3,7 @@ import CoreLocation
 import AVFoundation
 import Contacts
 import SwiftUI
+import HealthKit
 
 class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAudioRecorderDelegate {
     // State tracking
@@ -25,10 +26,16 @@ class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAud
     // Timer for countdown
     private var countdownTimer: Timer?
     
+    // HealthKit
+    private let healthStore = HKHealthStore()
+    @Published var latestHeartRate: Double?
+    private var heartRateQuery: HKQuery?
+
     override init() {
         super.init()
         setupLocationManager()
         loadEmergencyContacts()
+        requestHealthKitAuthorization()
     }
     
     func startCountdown() {
@@ -74,6 +81,8 @@ class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAud
         
         // Start recording audio/video as evidence
         startRecording()
+
+        startHeartRateMonitoring()
     }
     
     func stopEmergency() {
@@ -82,6 +91,8 @@ class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAud
         
         // Stop recording if it's in progress
         stopRecording()
+
+        stopHeartRateMonitoring()
     }
     
     // MARK: - Location Methods
@@ -201,6 +212,48 @@ class SOSViewModel: NSObject, ObservableObject, CLLocationManagerDelegate, AVAud
             print("Recording finished successfully")
         } else {
             print("Recording failed")
+        }
+    }
+    
+    // MARK: - HealthKit Integration
+
+    private func requestHealthKitAuthorization() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        healthStore.requestAuthorization(toShare: [], read: [heartRateType]) { success, error in
+            if !success {
+                print("HealthKit authorization failed: \(error?.localizedDescription ?? "Unknown error")")
+            }
+        }
+    }
+
+    private func startHeartRateMonitoring() {
+        guard HKHealthStore.isHealthDataAvailable() else { return }
+        let heartRateType = HKQuantityType.quantityType(forIdentifier: .heartRate)!
+        let sortDescriptor = NSSortDescriptor(key: HKSampleSortIdentifierEndDate, ascending: false)
+        let query = HKSampleQuery(
+            sampleType: heartRateType,
+            predicate: nil,
+            limit: 1,
+            sortDescriptors: [sortDescriptor]
+        ) { [weak self] _, samples, _ in
+            guard let self = self else { return }
+            if let sample = samples?.first as? HKQuantitySample {
+                let bpm = sample.quantity.doubleValue(for: HKUnit(from: "count/min"))
+                DispatchQueue.main.async {
+                    self.latestHeartRate = bpm
+                    print("Latest heart rate: \(bpm) BPM")
+                }
+            }
+        }
+        healthStore.execute(query)
+        heartRateQuery = query
+    }
+
+    private func stopHeartRateMonitoring() {
+        if let query = heartRateQuery {
+            healthStore.stop(query)
+            heartRateQuery = nil
         }
     }
     

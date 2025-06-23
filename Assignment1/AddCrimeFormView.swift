@@ -28,6 +28,10 @@ struct AddCrimeFormView: View {
     @State private var showingMap = false
     @State private var locationName: String = "No location selected"
     
+    // Sketch feature
+    @State private var crimeSketch: UIImage?
+    @State private var showingSketchView = false
+    
     // Category descriptions for help tooltip
     private let categoryDescriptions: [CrimeCategory: String] = [
         .theft: "Includes pickpocketing, shoplifting, vehicle theft, etc.",
@@ -265,6 +269,62 @@ struct AddCrimeFormView: View {
                     .listRowSeparator(.hidden)
                     .padding(.vertical, 4)
                     
+                    // Sketch section
+                    Section(header: 
+                        Text("Crime Scene Sketch")
+                            .foregroundColor(Color(hex: "64B5F6"))
+                            .fontWeight(.semibold)
+                    ) {
+                        VStack(alignment: .leading, spacing: 8) {
+                            Button(action: {
+                                showingSketchView = true
+                            }) {
+                                if let sketch = crimeSketch {
+                                    Image(uiImage: sketch)
+                                        .resizable()
+                                        .scaledToFit()
+                                        .frame(maxHeight: 200)
+                                        .cornerRadius(8)
+                                        .overlay(
+                                            RoundedRectangle(cornerRadius: 8)
+                                                .stroke(Color.white.opacity(0.5), lineWidth: 1)
+                                        )
+                                } else {
+                                    HStack {
+                                        Image(systemName: "pencil.and.outline")
+                                            .font(.system(size: 22))
+                                            .foregroundColor(Color(hex: "64B5F6"))
+                                        
+                                        Text("Create Sketch")
+                                            .foregroundColor(.white)
+                                        
+                                        Spacer()
+                                        
+                                        Image(systemName: "chevron.right")
+                                            .foregroundColor(Color.gray)
+                                    }
+                                    .padding()
+                                    .background(
+                                        RoundedRectangle(cornerRadius: 8)
+                                            .fill(Color(hex: "1A2133"))
+                                            .shadow(color: Color.black.opacity(0.2), radius: 2, x: 0, y: 1)
+                                    )
+                                }
+                            }
+                            
+                            if crimeSketch != nil {
+                                Text("Tap the sketch to edit")
+                                    .font(.caption)
+                                    .foregroundColor(Color.white.opacity(0.7))
+                            } else {
+                                Text("Use Apple Pencil to sketch the crime scene (iPad only)")
+                                    .font(.caption)
+                                    .foregroundColor(Color.white.opacity(0.7))
+                            }
+                        }
+                        .padding(.vertical, 8)
+                    }
+                    
                     Section {
                         Button(action: addCrime) {
                             HStack {
@@ -310,6 +370,9 @@ struct AddCrimeFormView: View {
                     isPresented: $showingMap
                 )
             }
+            .sheet(isPresented: $showingSketchView) {
+                CrimeSketchView(savedSketch: $crimeSketch)
+            }
             .toolbar {
                 ToolbarItem(placement: .navigationBarLeading) {
                     Button("Cancel") {
@@ -324,6 +387,16 @@ struct AddCrimeFormView: View {
     private func addCrime() {
         guard let location = selectedLocation else { return }
         
+        // Store sketch if available
+        var evidencePhotos: [String] = []
+        if let sketch = crimeSketch {
+            // Convert sketch to base64 string for storage
+            if let imageData = sketch.jpegData(compressionQuality: 0.7) {
+                let base64String = imageData.base64EncodedString()
+                evidencePhotos.append(base64String)
+            }
+        }
+        
         let newCrime = CriminalActivity(
             title: title,
             description: description,
@@ -336,7 +409,7 @@ struct AddCrimeFormView: View {
                     coordinate: location,
                     address: locationName,
                     timestamp: Date(),
-                    evidencePhotos: [],
+                    evidencePhotos: evidencePhotos,
                     witnesses: 0,
                     isSolved: false
                 )

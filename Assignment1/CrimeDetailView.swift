@@ -15,6 +15,10 @@ struct CrimeDetailView: View {
     @State private var selectedLocationIndex = 0
     @State private var showFullDescription = false
     
+    // Add keyboard shortcut states
+    @State private var showKeyboardShortcutHelp = false
+    @State private var isPresentingInNewWindow = false
+    
     init(crime: CriminalActivity) {
         self.crime = crime
         if let firstLocation = crime.locations.first {
@@ -355,6 +359,40 @@ struct CrimeDetailView: View {
                                 .cornerRadius(12)
                                 .frame(maxWidth: .infinity)
                             }
+                            
+                            // Add sketch display if available - Fix conditional binding
+                            if !crime.locations.isEmpty {
+                                let location = crime.locations[selectedLocationIndex]
+                                if !location.evidencePhotos.isEmpty {
+                                    VStack(alignment: .leading, spacing: 8) {
+                                        Text("EVIDENCE SKETCHES")
+                                            .font(.caption)
+                                            .fontWeight(.bold)
+                                            .foregroundColor(Color(hex: "64B5F6"))
+                                            .padding(.top, 16)
+                                        
+                                        ScrollView(.horizontal, showsIndicators: false) {
+                                            HStack(spacing: 16) {
+                                                ForEach(location.evidencePhotos, id: \.self) { base64String in
+                                                    if let data = Data(base64Encoded: base64String),
+                                                       let image = UIImage(data: data) {
+                                                        Image(uiImage: image)
+                                                            .resizable()
+                                                            .scaledToFit()
+                                                            .frame(height: 160)
+                                                            .cornerRadius(8)
+                                                            .overlay(
+                                                                RoundedRectangle(cornerRadius: 8)
+                                                                    .stroke(Color.white.opacity(0.2), lineWidth: 1)
+                                                            )
+                                                    }
+                                                }
+                                            }
+                                            .padding(.vertical, 8)
+                                        }
+                                    }
+                                }
+                            }
                         }
                         .padding(.horizontal, 20)
                         .padding(.vertical, 24)
@@ -413,7 +451,74 @@ struct CrimeDetailView: View {
             }
             .edgesIgnoringSafeArea(.top)
         }
-        .navigationBarHidden(true)
+        .alert(isPresented: $showKeyboardShortcutHelp) {
+            Alert(
+                title: Text("Keyboard Shortcuts"),
+                message: Text("⌘+N: Open in new window\n⌘+R: Report additional info\n⌘+E: Set up alerts\n⌘+D: View on map\n⌘+F: Toggle description\n⌘+W: Close this view"),
+                dismissButton: .default(Text("OK"))
+            )
+        }
+        // Replace keyCommands with onAppear to set up the key commands
+        .onAppear {
+            setupKeyCommands()
+        }
+    }
+    
+    // Add this private method to set up the UIKeyCommands
+    private func setupKeyCommands() {
+        // Since we can't add key commands directly to a SwiftUI view,
+        // we can use UIApplication.shared to handle them
+        NotificationCenter.default.addObserver(
+            forName: UIApplication.didBecomeActiveNotification,
+            object: nil,
+            queue: .main
+        ) { _ in
+            // Register for keyboard shortcuts via responder chain
+            DispatchQueue.main.async {
+                let newWindowSelector = Selector(("openInNewWindow"))
+                let reportSelector = Selector(("reportAdditionalInfo"))
+                let toggleSelector = Selector(("toggleDescription"))
+                let closeSelector = Selector(("closeView"))
+                
+                // We need to use UIKeyCommand at the UIKit level, not directly in SwiftUI
+                if let window = UIApplication.shared.windows.first {
+                    window.rootViewController?.addKeyCommand(
+                        UIKeyCommand(input: "n", modifierFlags: .command, action: newWindowSelector)
+                    )
+                    window.rootViewController?.addKeyCommand(
+                        UIKeyCommand(input: "r", modifierFlags: .command, action: reportSelector)
+                    )
+                    window.rootViewController?.addKeyCommand(
+                        UIKeyCommand(input: "f", modifierFlags: .command, action: toggleSelector)
+                    )
+                    window.rootViewController?.addKeyCommand(
+                        UIKeyCommand(input: "w", modifierFlags: .command, action: closeSelector)
+                    )
+                }
+            }
+        }
+    }
+    
+    // Replace @objc methods with regular methods
+    private func openInNewWindow() {
+        isPresentingInNewWindow = true
+        
+        let newWindowView = NewWindowView(viewType: .crimeDetail, crime: crime)
+        UIApplication.shared.createNewWindow(for: newWindowView)
+    }
+    
+    private func reportAdditionalInfo() {
+        // Report additional information logic
+    }
+    
+    private func toggleDescription() {
+        withAnimation {
+            showFullDescription.toggle()
+        }
+    }
+    
+    private func closeView() {
+        dismiss()
     }
 }
 
