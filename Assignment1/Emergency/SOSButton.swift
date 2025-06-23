@@ -41,14 +41,27 @@ struct SOSButton: View {
     }
     
     private func hapticFeedback(style: UIImpactFeedbackGenerator.FeedbackStyle) {
+        #if !targetEnvironment(simulator)
         let generator = UIImpactFeedbackGenerator(style: style)
         generator.impactOccurred()
+        #endif
     }
 }
 
-#Preview {
-    ZStack {
-        Color.gray.opacity(0.2).ignoresSafeArea()
-        SOSButton(isActivated: .constant(false))
+// Use the correct SwiftUI preview provider syntax
+struct SOSButton_Previews: PreviewProvider {
+    static var previews: some View {
+        SOSButtonPreviewWrapper()
+    }
+}
+
+// Move the wrapper struct outside of the previews closure
+struct SOSButtonPreviewWrapper: View {
+    @State private var isActivated = false
+    var body: some View {
+        ZStack {
+            Color.gray.opacity(0.2).ignoresSafeArea()
+            SOSButton(isActivated: $isActivated)
+        }
     }
 }

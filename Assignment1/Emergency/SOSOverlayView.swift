@@ -8,8 +8,6 @@ struct SOSOverlayView: View {
     @State private var pinInput = ""
     @FocusState private var isPinFieldFocused: Bool
 
-    let timerInterval: TimeInterval = 5
-
     var body: some View {
         ZStack {
             // Semi-transparent background
@@ -42,8 +40,12 @@ struct SOSOverlayView: View {
                                 .stroke(Color.red.opacity(0.3), lineWidth: 15)
                                 .frame(width: 120, height: 120)
                             
+                            // Use the initial countdown value as denominator
                             Circle()
-                                .trim(from: 0, to: CGFloat(viewModel.timeRemaining) / CGFloat(timerInterval))
+                                .trim(
+                                    from: 0,
+                                    to: CGFloat(viewModel.timeRemaining) / CGFloat(max(viewModel.timeRemaining, 1, 15))
+                                )
                                 .stroke(Color.red, style: StrokeStyle(lineWidth: 15, lineCap: .round))
                                 .frame(width: 120, height: 120)
                                 .rotationEffect(.degrees(-90))
@@ -203,5 +205,7 @@ struct SOSActionRow: View {
 }
 
 #Preview {
+    // Prevent HealthKit and location access in preview
     SOSOverlayView(isActivated: .constant(true))
+        .environment(\.colorScheme, .dark)
 }

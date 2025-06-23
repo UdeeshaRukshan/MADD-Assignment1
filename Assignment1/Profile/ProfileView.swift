@@ -5,6 +5,7 @@ struct ProfileView: View {
     @State private var isEditing = false
     @State private var showImagePicker = false
     @State private var showSettingsSheet = false
+    @State private var showHealthDashboard = false
     
     var body: some View {
         ZStack {
@@ -199,6 +200,23 @@ struct ProfileView: View {
                         }
                     }
                     .padding(.horizontal)
+                    
+                    // Health Dashboard Button
+                    Button {
+                        showHealthDashboard = true
+                    } label: {
+                        HStack {
+                            Image(systemName: "heart.text.square.fill")
+                                .foregroundColor(.red)
+                            Text("My Health Dashboard")
+                                .foregroundColor(.white)
+                                .fontWeight(.medium)
+                        }
+                        .padding()
+                        .background(Color(hex: "1A2133"))
+                        .cornerRadius(10)
+                    }
+                    .padding(.top, 20)
                 }
             }
         }
@@ -232,6 +250,9 @@ struct ProfileView: View {
         }
         .sheet(isPresented: $showSettingsSheet) {
             ProfileSettingsView()
+        }
+        .sheet(isPresented: $showHealthDashboard) {
+            ProfileHealthView()
         }
         .onAppear {
             viewModel.loadProfile()
